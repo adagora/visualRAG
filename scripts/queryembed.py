@@ -140,6 +140,9 @@ def embed_query(text: str, instruction: str | None = None) -> list[float]:
     padding and the CUDA graph together move an index score by up to 7.9e-04 at
     cos 0.999994, which check_parity.py exists to keep honest.
     """
+    import gemini_index
+    if gemini_index.enabled():
+        return gemini_index.embed_query(text)
     return list(_embed_cached(text, instruction))
 
 

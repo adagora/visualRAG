@@ -203,6 +203,9 @@ def _raw_search(query: str, n_results: int = 5, timeout: int = 120) -> list[dict
     caller is retrieve.py and more candidates are strictly better.
     """
     n = max(1, n_results)
+    import gemini_index
+    if gemini_index.enabled():
+        return gemini_index.search(query, n)
     if queryembed.LOCAL_ENCODE:
         try:
             q = {"embedding": queryembed.embed_query(query)}

@@ -3,6 +3,10 @@
 Search technical PDFs by how pages **look** (drawings, tables, dimension callouts),
 then answer from page screenshots with a VLM.
 
+To try it on a public paper without a GPU or a local embedding model, see
+[Attention Is All You Need + Gemini Embedding 2](examples/attention/README.md):
+a pinned arXiv PDF, a page-image index built with `gemini-embedding-2`, and this UI.
+
 Thin layer over [PixelRAG](https://github.com/StarTrail-org/PixelRAG): index +
 serve stay upstream; this repo adds page-level retrieval, optional BM25 hybrid,
 citations, and a web UI.

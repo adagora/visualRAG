@@ -7,6 +7,9 @@ __pycache__/
 
 # source PDFs (large; tiles/embeddings are what chat needs)
 pdfs/
+examples/attention/data/
+examples/attention/index/
+examples/attention/.gemini-build-*/
 
 # build leftovers inside index (final shard + faiss are enough)
 index/_probe/

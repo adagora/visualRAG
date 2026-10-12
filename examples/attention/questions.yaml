@@ -1,0 +1,43 @@
+# Retrieval checks for the Attention Is All You Need example, in the format
+# scripts/bench.py reads (`--eval`). `pages` are 1-based PDF pages of
+# arXiv:1706.03762v7, located by searching the page text for the passage that
+# answers each question — by hand, not by a model, so no retrieval mode is
+# graded by a judge that shares its evidence.
+#
+# Five questions is a smoke test. It can tell you the index is wired up; it
+# cannot rank retrieval modes (see bench.py's resolution table).
+
+- q: "Explain the scaled dot-product attention formula and why it divides by the square root of d_k."
+  kind: spec
+  doc: "Attention Is All You Need"
+  pages: [4]
+  primary: 4
+  answerable: true
+
+- q: "What does Figure 1 show about the Transformer encoder and decoder?"
+  kind: spec
+  doc: "Attention Is All You Need"
+  pages: [3]
+  primary: 3
+  answerable: true
+
+- q: "How many attention heads does the base Transformer use?"
+  kind: spec
+  doc: "Attention Is All You Need"
+  pages: [5]
+  primary: 5
+  answerable: true
+
+- q: "Compare the base and big Transformer results in Table 2."
+  kind: spec
+  doc: "Attention Is All You Need"
+  pages: [8]
+  primary: 8
+  answerable: true
+
+- q: "What optimizer, learning-rate schedule and warmup steps were used?"
+  kind: spec
+  doc: "Attention Is All You Need"
+  pages: [7]
+  primary: 7
+  answerable: true
