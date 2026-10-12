@@ -5,6 +5,16 @@ import corpus
 import jev
 
 
+def choices(questions, probability=0.5):
+    out = {}
+    for key, q in questions.items():
+        if q["type"] == "choice":
+            a, b = sorted(q["criteria"], key=int)
+            out[key] = {"choice": a if probability >= 0.5 else b,
+                        "probabilities": {a: probability, b: 1 - probability}}
+    return out
+
+
 @pytest.fixture(autouse=True)
 def configured(monkeypatch):
     monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
@@ -38,7 +48,7 @@ def test_rerank_promotes_expanded_chunk_before_cutoff(monkeypatch):
     seen = []
     def evaluate(state, questions, report=None, kind=""):
         seen.append(state)
-        return {"0": {"score": 0.3}, "1": {"score": 2.9}}
+        return choices(questions, 0.1)
     monkeypatch.setattr(jev, "evaluate", evaluate)
     result = jev.search("q", 1,
                         lambda q, n: [hit(0)] if q == "q" else [hit(0), hit(1)],
@@ -50,10 +60,10 @@ def test_rerank_promotes_expanded_chunk_before_cutoff(monkeypatch):
 
 
 @pytest.mark.parametrize("bad", [float("nan"), -1, 4, "2", True])
-def test_invalid_scores_fall_back_atomically(monkeypatch, bad):
+def test_invalid_probabilities_fall_back_atomically(monkeypatch, bad):
     monkeypatch.setattr(jev, "expand", lambda q, report=None: [q])
-    monkeypatch.setattr(jev, "evaluate", lambda *args: {"0": {"score": bad}})
-    assert jev.search("q", 1, lambda q, n: [hit(0)], texts("text")) == [hit(0)]
+    monkeypatch.setattr(jev, "evaluate", lambda *args: {"pair_0_1": {"choice": "0", "probabilities": {"0": bad, "1": 0.5}}})
+    assert jev.search("q", 1, lambda q, n: [hit(0), hit(1)], texts("text")) == [hit(0)]
 
 
 def test_api_failure_and_missing_text_preserve_retrieval(monkeypatch):
@@ -111,7 +121,7 @@ def test_the_report_counts_the_funnel_and_the_tokens(monkeypatch):
 
     def evaluate(state, questions, report=None, kind=""):
         report.calls.append(jev.Call(kind, 40.0, 900, 60))
-        return {k: {"score": 2.0} for k in questions}
+        return choices(questions)
 
     monkeypatch.setattr(jev, "evaluate", evaluate)
     report = jev.Report()
@@ -142,7 +152,7 @@ def test_one_unreadable_crop_does_not_abort_the_whole_rerank(monkeypatch):
 
     def evaluate(state, questions, report=None, kind=""):
         asked.update(state["chunks"])
-        return {k: {"score": 3.0} for k in questions}
+        return choices(questions)
 
     monkeypatch.setattr(jev, "evaluate", evaluate)
     report = jev.Report()
@@ -162,7 +172,7 @@ def test_the_existence_check_rides_along_with_the_rerank(monkeypatch):
 
     def evaluate(state, questions, report=None, kind=""):
         asked.update(questions)
-        return {**{k: {"score": 1.5} for k in questions if k != jev.ANSWERABLE},
+        return {**choices(questions),
                 jev.ANSWERABLE: {"noul": 0.04}}
 
     monkeypatch.setattr(jev, "evaluate", evaluate)

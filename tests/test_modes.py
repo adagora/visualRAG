@@ -54,7 +54,9 @@ def jev_wired(monkeypatch, *, scores=None):
             report.calls.append(jev.Call(kind, 40.0, 900, 60))
         if kind == "expand":
             return {k: {"noul": 0.95 if k == "0" else 0.1} for k in questions}
-        return {k: (scores or {}).get(k, {"score": 2.0}) for k in questions}
+        return {k: (scores or {}).get(k, {"choice": next(iter(q["criteria"])),
+                    "probabilities": dict.fromkeys(q["criteria"], 0.5)})
+                for k, q in questions.items() if q["type"] == "choice"}
 
     monkeypatch.setattr(jev, "evaluate", evaluate)
 
@@ -201,7 +203,7 @@ def test_bm25_votes_once_per_mode_not_twice(monkeypatch, wired, tmp_path):
     assert [row["retriever"] for row in debug][-1] == "lexical"
 
     _, debug, stats = rag.retrieve_for("q", "jev+hybrid", n_pages=2)
-    assert stats["fusion"] == "jev score"
+    assert stats["fusion"] == "choice-bradley-terry"
     assert all(row["retriever"] == "visual" for row in debug)
     assert stats["lexical_hits"] and stats["jev"]["candidates"] == 4
 

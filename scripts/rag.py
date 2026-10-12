@@ -605,7 +605,7 @@ def retrieve_for(question: str, mode: str | None = "auto",
 
 
 def _rerank_pages(question: str, pages: list, report) -> list:
-    """Reorder candidate pages by Jev's score of each page's full text.
+    """Reorder candidate pages by pairwise Choice / Bradley-Terry strengths.
 
     A page is the unit the reader is given and the unit a heading belongs to.
     Scoring crops asks the model to judge a table with the title cropped off.
@@ -672,7 +672,7 @@ def retrieval_stats(mode: str, stats: dict, report, debug: list[dict],
         "reranker": "jev" if (jev_stats and jev_stats["reranked"]) else "none",
         "fusion": ("xray score (no retrieval)" if sweep is not None else
                    "rrf(visual+bm25)" if lexical_fused else
-                   "jev score" if (jev_stats and jev_stats["reranked"])
+                   (jev_stats.get("ranking_method") or "jev score") if (jev_stats and jev_stats["reranked"])
                    else "score-norm(variants)"),
         "queries": [row["query"] for row in debug] or (
             jev_stats["variants"] if jev_stats else []),

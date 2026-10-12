@@ -373,7 +373,7 @@ export TYPESAFE_API_KEY=...
 ```
 
 Both one-shot retrieval and agent searches select query expansions with Jev,
-retrieve and deduplicate candidate chunks, then score their relevance to the
+retrieve and deduplicate candidate chunks, then compare their relevance to the
 original question before selecting context for the reader. In `jev+hybrid`,
 lexical page candidates enter that same scoring stage — a page BM25 nominated
 enters the pool as chunk 0 with score 0.0 (it has no cosine and must not
@@ -389,8 +389,42 @@ Polish/English facets (price, dimensions, installation, specifications,
 accessories, security), retaining the original query and local noun phrase.
 Reranking uses PDF text clipped to each indexed chunk's geometry. It evaluates
 up to 64 unique candidates (or the requested hit count if larger), with at most
-6,000 characters per chunk, using a four-level relevance rubric. Original
-retrieval order breaks score ties. The reader still receives page images.
+6,000 characters per chunk. Both chunk reranking and `jev-page` now use pairwise
+[Choice judgments](https://docs.typesafe.ai/primitives/choice) and a
+[Bradley–Terry fit](https://www.jmlr.org/papers/v24/22-1086.html). Each readable
+pair is compared once; its two probabilities become fractional wins. The fit
+models `P(i beats j) = sigmoid(theta_i - theta_j)` with a small L2 prior (0.01)
+to keep unanimous preferences finite. Exponentiated strengths are normalized
+to sum to one within the candidate pool. Original retrieval order breaks ties.
+The reader still receives page images.
+
+These strengths express relative preference, not absolute relevance; `best_score`
+now has that same relative meaning. The separate answerability Noul remains the
+signal for a pool with no answer. Ranking reports include `ranking_method` and
+`comparisons`, and the answer-cache namespace has changed. X-ray corpus scoring
+keeps its absolute rubric because it also supports relevance thresholds.
+
+All-pairs comparison costs `n*(n-1)/2` Choices: 120 for 16 pages or 2,016 for
+64 chunks. Requests contain at most 128 Choices, sharing the text state within
+each request; answerability rides in the first request. Large chunk pools now
+require multiple round trips and repeat state across batches. Historical latency,
+cost, and quality numbers below describe the earlier Score implementation; they
+are not measurements of this change. A live three-candidate smoke test on
+2026-10-12 placed the direct width answer above same-product colour information
+and unrelated fabric text (strengths 0.9685, 0.0292, 0.0024), with answerability
+0.95. It used one request, 656 input tokens, 118 output tokens, and 339 ms.
+This verifies the API integration on that case; a corpus benchmark is needed to
+establish whether this approach improves retrieval quality.
+
+A second live check on 2026-10-12 ranked the 15 pages of the Attention example
+for its five gold questions (`examples/attention/questions.yaml`). The old Score
+ranking and the pairwise fit both put the gold page first on all five, so this
+set cannot tell them apart. Cost does differ. Sixteen pages fit in one request:
+$0.0009 against $0.0005, about 0.5 s either way. A 45-chunk pool took 8 sequential
+requests, 4.6 s and $0.0079 against one request, 0.5 s and $0.0006 (188k against
+15k input tokens), because every batch resends the whole pool. Page-level
+reranking is therefore cheap; chunk-level reranking with the default 64-candidate
+pool is not.
 
 `PIXELRAG_JEV=0` disables the stage; `TYPESAFE_MODEL` overrides `jev-latest`.
 Requests time out after 20 seconds. Failed expansion uses local query variants;
