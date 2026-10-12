@@ -81,7 +81,7 @@ def index_fingerprint(index_dir: Path) -> str:
     and this runs on every question. A rebuild always moves both.
     """
     parts = []
-    for name in ("index.faiss", "articles.json", "summary.json"):
+    for name in ("index.faiss", "articles.json", "summary.json", "gemini.json", "gemini.npy"):
         p = Path(index_dir) / name
         try:
             st = p.stat()
