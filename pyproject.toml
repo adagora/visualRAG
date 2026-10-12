@@ -58,6 +58,7 @@ py-modules = [
     "gemini_index",
     "imagefit",
     "jev",
+    "jev_memo",
     "layout",
     "lexical",
     "make_test_pdf",

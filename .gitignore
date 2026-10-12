@@ -21,6 +21,7 @@ index/embeddings/checkpoint.json
 index/tiles/_fit/
 index/answer_cache.npz
 index/answer_cache.json
+index/jev_judgments.sqlite*
 index/transcripts/
 
 # service logs (serve_all.py)
