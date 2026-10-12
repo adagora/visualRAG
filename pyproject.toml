@@ -46,6 +46,8 @@ py-modules = [
     "bench_search",
     "build_index",
     "build_text_index",
+    "chat_categories",
+    "chat_context",
     "check_parity",
     "chunk_multiscale",
     "chunkmeta",

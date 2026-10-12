@@ -446,3 +446,28 @@ def test_agent_mode_is_never_cached(wired):
     rag.run_agent("q", mode="agent")
     rag.run_agent("q", mode="agent")
     assert reader.calls == 2
+
+
+def test_context_intents_do_not_share_fuzzy_answer_cache(wired):
+    reader = wired(answer='answer')
+    rag.run_agent('Price of Connect in PLN?', cache_scope='pln')
+    rag.run_agent('Price of Connect in EUR?', cache_scope='eur')
+    assert reader.calls == 2  # fixture embeddings deliberately collide
+    replay = rag.run_agent('Price of Connect in EUR?', cache_scope='eur')
+    assert replay['cached'] and reader.calls == 2
+
+
+def test_survey_budget_and_task_prompt_reach_reader_and_cache(wired, monkeypatch):
+    reader = wired()
+    original = rag._oneshot_pages
+    budgets = []
+    def pages(*a, **k):
+        budgets.append(k.get('n_pages'))
+        return original(*a, **k)
+    monkeypatch.setattr(rag,'_oneshot_pages',pages)
+    rag.run_agent('q', n_pages=8, task_instruction='Compare documented differences.')
+    assert budgets == [8]
+    assert 'Compare documented differences.' in reader.system
+    # Same question with a different reader budget/format must not reuse it.
+    rag.run_agent('q')
+    assert reader.calls == 2

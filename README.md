@@ -361,6 +361,78 @@ correct and each one now says so:
 `PIXELRAG_LOG=info` or `scripts/ask.py --log info` to see them; the CLI sends
 them to stderr so they never interleave with a streamed answer.
 
+### Conversation and query planning
+
+The chat now keeps up to 12 recent user/assistant messages for follow-ups.
+Before retrieval, Jev checks whether a new question depends on the conversation;
+an independent question skips rewriting. For a continuation or uncertain judgment,
+the configured reader resolves a standalone question. Product, currency, size and
+topic corrections override previous context. Earlier answers help resolve references
+but are not document evidence. Ambiguous references produce a clarification instead
+of guessing a product. The trace shows the resolved question; **Nowa rozmowa** clears
+conversation context. Context is held in the browser tab and resets on reload.
+
+`/api/ask` accepts optional `history` entries with `role` (`user` or `assistant`)
+and `text`; existing clients can omit it. Whole recent messages are admitted within
+a 12,000-character context budget. Contextual answers use an exact resolved-intent
+cache namespace, preventing fuzzy cache reuse across product or currency changes.
+The final result exposes `resolved_question`, `needs_clarification` when applicable,
+and `context_usage` separately from the answer reader's usage.
+
+A single Jev request judges topic, task and retrieval breadth. Procedure questions
+request a checklist; contact, troubleshooting and comparison tasks receive specific
+format instructions while retaining citation and evidence requirements. A confident
+survey/overview question receives eight pages by default instead of four (bounded
+by the configured reader budget and the 12-page ceiling for a supplied override).
+Pointed or uncertain questions retain the ordinary budget. Budget and response-format
+changes have separate answer-cache namespaces. A `findDocument` task is classified, but
+nothing acts on it yet.
+
+Checked live on 2026-10-12 against the chatbot's own labelled fixtures
+(`jev/serviceFocus.ts`: 11 topic and 17 task cases): topic agreed on 11 of 11 and task on
+13 of 17. All four task disagreements returned `other` at confidence 0.39-0.58; none
+produced a wrong specific label. The planning request took a median 0.32 s (max 0.44 s)
+and runs before retrieval. Resolving a dependent follow-up costs about 2 s (a 0.3 s Jev
+check plus a reader rewrite of about 1.8 s); an independent question skips the rewrite.
+The breadth judgment did not widen retrieval for either of the chatbot's own survey
+examples (`pokaż automatykę w bramach przemysłowych`, `jakie nadajniki są dostępne dla
+bram garażowych`): both came back `pointed`, at confidence 0.18 and 0.58. The chatbot
+settles strong survey cues with a keyword rule before asking a model, and this port
+does not, so treat the wider page budget as unproven. A Jev Choice's `confidence` is the
+margin between its top two options, not the top probability: with two options, the 0.65
+threshold means a top probability of at least 0.825.
+
+Raw Jev plans and continuation judgments are cached in
+`index/jev_judgments.sqlite`. Keys include model identity, full question definitions,
+state and judgment version. Confidence thresholds are applied after retrieval from
+memo, so changing a threshold does not trigger fresh inference. Entries expire after
+24 hours, including aliases such as `jev-latest`; malformed responses are not cached.
+`PIXELRAG_JEV_MEMO` overrides the path and `PIXELRAG_JEV_MEMO_DISABLED=1` bypasses it.
+A missing/unwritable cache falls back to fresh evaluation. The file holds the judged
+text (questions and conversation excerpts) in clear; it sits under the git-ignored index directory.
+
+### Chat categories and answer cards
+
+The web chat classifies each question with a Jev Choice and shows its topic as
+a small caption on the answer card. Gwarancja uses green, Reklamacja amber,
+Serwis blue, Instrukcje purple, and Ceny rose. Other topics use a neutral gray
+card. The label, subtle tint and colored edge follow the chatbot project's
+`db515744` commit (`serviceCategories.ts`, `ChatMessageItem.styles.ts`); the
+category definitions and provisional confidence threshold (0.65) come from its
+`serviceFocus.ts`.
+
+The topic caption is display-only and uses the server's `TYPESAFE_API_KEY` and
+`TYPESAFE_MODEL`. It respects `PIXELRAG_JEV=0`. Missing credentials, failures,
+or uncertain judgments leave the card unclassified. The planning request
+has a three-second network timeout; answerability remains a separate judgment.
+The `/api/ask` stream sends a `classification` event and includes the same
+classification in the final result, including when the answer was cached.
+
+The two progress steps follow actual search and answer events. Progress clears
+on the first answer text, completion or failure. Card entrance animations honor
+reduced-motion preferences, and captions keep the topic understandable without
+relying on color alone. Dark and light themes share the existing text palette.
+
 ### Jev query expansion and chunk reranking
 
 Set `TYPESAFE_API_KEY` in the project `.env` file or export it to enable the

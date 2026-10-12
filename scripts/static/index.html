@@ -48,6 +48,29 @@
   #log { flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:16px; }
   .msg { max-width:96%; }
   .msg.user { align-self:flex-end; background:var(--user); padding:9px 13px; border-radius:var(--r); }
+  .msg.bot { width:100%; min-width:0; padding:16px 18px; border:1px solid var(--line);
+    border-radius:8px; background:var(--panel); position:relative; overflow-wrap:anywhere;
+    animation:message-in .22s ease-out both; }
+  .msg.bot.categorized { padding-bottom:40px; border-color:var(--category-border);
+    background-image:radial-gradient(ellipse at top left, var(--category-soft), transparent 75%);
+    box-shadow:inset 3px 0 0 var(--category-color); }
+  .category-caption { display:flex; align-items:center; gap:6px; position:absolute;
+    right:16px; bottom:10px; font-size:11px; line-height:1.4; color:var(--muted); }
+  .category-caption::before { content:''; width:6px; height:6px; border-radius:50%;
+    background:var(--category-color); }
+  .msg.bot.failed { border-color:var(--warn); background-image:none; box-shadow:none; }
+  .answer-progress { margin-bottom:12px; display:grid; gap:12px; font-size:13px; }
+  .progress-step { display:flex; align-items:center; gap:10px; color:var(--muted); }
+  .progress-marker { display:grid; place-items:center; width:20px; height:20px; flex:none;
+    border:1px solid var(--line); border-radius:50%; font-size:11px; }
+  .progress-step.active { color:var(--ink); }
+  .progress-step.active .progress-marker { border-color:var(--accent); color:var(--accent); }
+  .progress-step.done .progress-marker { background:var(--numbg); color:var(--num); border-color:var(--num); }
+  button:focus-visible, summary:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  @keyframes message-in { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion:reduce) { .msg.bot, .spin { animation:none; } }
+  @media (max-width:600px) { #log { padding:12px; } .msg.bot { max-width:100%; padding:14px; }
+    .msg.bot.categorized { padding-bottom:38px; } .cite { min-height:44px; } }
   .msg.bot .body { font-size:14.5px; line-height:1.6; }
   .msg.bot .body.meta { white-space:pre-wrap; }
   .msg.bot .body > :first-child { margin-top:0; }
@@ -261,6 +284,7 @@
     <label class="chk"><input type="checkbox" id="cmp"
       title="porównaj tryby wyszukiwania — samo wyszukiwanie, bez czytnika"> porównaj tryby</label>
     <label class="chk"><input type="checkbox" id="chunks"> regiony PixelRAG</label>
+    <button type="button" class="mini" id="newChat">Nowa rozmowa</button>
   </div>
 </header>
 
@@ -270,7 +294,7 @@
       <div class="msg bot"><div class="body">Zadaj pytanie o zaindeksowane katalogi i cenniki — po polsku lub angielsku. Odpowiedź jest pokazana w oryginalnym PDF-ie po prawej: kliknij cytat, aby otworzyć dokument na tej stronie z podświetlonym fragmentem.</div></div>
     </div>
     <form id="form">
-      <input id="q" type="text" autocomplete="off" required
+      <input id="q" type="text" autocomplete="off" maxlength="4000" required
              placeholder="np. Jakie są opcje napędu do bramy roletowej BR-77">
       <button class="go" id="send">Zapytaj</button>
     </form>
@@ -688,6 +712,53 @@ function addMsg(cls, html){
   return el;
 }
 
+// Same restrained topic palette as chatbot db515744. Labels accompany color.
+const CATEGORIES = {
+  warranty: {label:'Gwarancja', color:'#477063'},
+  claim: {label:'Reklamacja', color:'#9a6230'},
+  service: {label:'Serwis', color:'#426a9b'},
+  manual: {label:'Instrukcje', color:'#75609c'},
+  price: {label:'Ceny', color:'#8d617a'},
+  other: {label:'Inne', color:'#73737e'},
+  unclassified: {label:'Bez kategorii', color:null},
+};
+function applyCategory(card, classification){
+  const key = Object.hasOwn(CATEGORIES, classification?.category) ? classification.category : 'unclassified';
+  const category = CATEGORIES[key];
+  card.dataset.category = key;
+  card.classList.toggle('categorized', !!category.color);
+  card.querySelector('.category-caption')?.remove();
+  if (!category.color) return;
+  card.style.setProperty('--category-color', category.color);
+  card.style.setProperty('--category-soft', category.color + '18');
+  card.style.setProperty('--category-border', category.color + '60');
+  const caption = document.createElement('span');
+  caption.className = 'category-caption';
+  caption.textContent = category.label;
+  caption.title = 'Temat pytania';
+  card.appendChild(caption);
+}
+function answerProgress(card){
+  const progress = document.createElement('div');
+  progress.className = 'answer-progress';
+  progress.setAttribute('role', 'status');
+  progress.setAttribute('aria-live', 'polite');
+  progress.innerHTML = '<div class="progress-step active"><span class="progress-marker" aria-hidden="true">1</span><span class="progress-label">Przeszukuję dokumenty…</span></div>'
+    + '<div class="progress-step"><span class="progress-marker" aria-hidden="true">2</span><span class="progress-label">Przeczytam źródła i napiszę odpowiedź</span></div>';
+  card.prepend(progress);
+  return {
+    reading(count){
+      const rows = progress.querySelectorAll('.progress-step');
+      rows[0].className = 'progress-step done';
+      rows[0].querySelector('.progress-marker').textContent = '✓';
+      rows[0].querySelector('.progress-label').textContent = count ? `Znalazłem strony: ${count}` : 'Wyszukiwanie zakończone';
+      rows[1].className = 'progress-step active';
+      rows[1].querySelector('.progress-label').textContent = 'Czytam źródła i piszę odpowiedź…';
+    },
+    finish(){ progress.remove(); },
+  };
+}
+
 function resetSources(){
   V.pages.clear(); V.cites = []; V.pins = []; V.active = -1; V.activeRects = [];
   citeBtns = [];
@@ -907,11 +978,22 @@ async function sse(url, body, onMessage){
   }
 }
 
+const conversation = [];
+const newChat = document.getElementById('newChat');
+newChat.addEventListener('click', () => {
+  if (sendEl.disabled) return;
+  conversation.length = 0;
+  logEl.replaceChildren();
+  resetSources();
+  qEl.focus();
+});
 // ------------------------------------------------------------------ one ask
 async function ask(question, retrieval){
   resetSources();
   const bot = addMsg('bot',
-    `<div class="trace"></div><div class="body meta"><span class="spin"></span> szukam…</div>`);
+    `<div class="trace"></div><div class="body"></div>`);
+  newChat.disabled = true;
+  const progress = answerProgress(bot);
   const traceEl = bot.querySelector('.trace');
   const bodyEl = bot.querySelector('.body');
 
@@ -927,10 +1009,15 @@ async function ask(question, retrieval){
   let streaming = false, streamBuf = '';
   try {
     await sse('/api/ask',
-      { question, api_key: keyEl.value.trim() || null, retrieval: retrieval || null },
+      { question, history: conversation.slice(-12), api_key: keyEl.value.trim() || null, retrieval: retrieval || null },
       ({ kind, payload }) => {
         if (kind === 'event') {
-          if (payload.type === 'search') {
+          if (payload.type === 'context') {
+            if (payload.contextual) step('↳', `pytanie w kontekście: <code>${esc(payload.question)}</code>`);
+          } else if (payload.type === 'classification') {
+            applyCategory(bot, payload);
+          } else if (payload.type === 'search') {
+            progress.reading(payload.hits?.length || 0);
             const vs = (payload.variants || []).map(v => esc(v.query)).join(' · ');
             const s = payload.stats;
             step('⌕', `szukano: <code>${vs || esc(payload.query)}</code> — `
@@ -972,6 +1059,7 @@ async function ask(question, retrieval){
           } else if (payload.type === 'tile_error') {
             step('!', `<span class="err">brak regionu ${payload.tile_index}:${payload.chunk_index}</span>`);
           } else if (payload.type === 'answer_delta') {
+            progress.finish();
             // Render as it arrives. The ---CYTATY--- block is stripped server
             // side and only exists in the final payload, so mdToHtml runs over
             // the accumulated raw text and gets replaced wholesale on 'done'.
@@ -981,6 +1069,10 @@ async function ask(question, retrieval){
             logEl.scrollTop = logEl.scrollHeight;
           }
         } else if (kind === 'done') {
+          progress.finish();
+          conversation.push({role:'user', text:payload.resolved_question || question},
+                            {role:'assistant', text:payload.answer.slice(0,12000)});
+          if (payload.classification) applyCategory(bot, payload.classification);
           bodyEl.classList.remove('meta');
           bodyEl.innerHTML = mdToHtml(payload.answer);
           V.cites = payload.citations || [];
@@ -1012,14 +1104,20 @@ async function ask(question, retrieval){
             + (speed ? ` · ${speed}` : '');
           bot.appendChild(m);
         } else if (kind === 'error') {
+          progress.finish();
+          bot.classList.add('failed');
           bodyEl.classList.remove('meta');
           bodyEl.innerHTML = `<span class="err">${esc(payload)}</span>`;
         }
       });
   } catch (err) {
+    progress.finish();
+    bot.classList.add('failed');
     bodyEl.classList.remove('meta');
     bodyEl.innerHTML = `<span class="err">${esc(err.message || err)}</span>`;
   }
+  progress.finish();
+  newChat.disabled = false;
   logEl.scrollTop = logEl.scrollHeight;
 }
 

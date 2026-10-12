@@ -26,10 +26,13 @@ import uvicorn
 from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Literal
 
 import compare as compare_modes
 import corpus
+import chat_categories
+import chat_context
 import queryembed
 import rag
 import snip
@@ -43,8 +46,14 @@ app = FastAPI(title="PixelRAG manuals")
 app.mount("/vendor", StaticFiles(directory=HERE / "static" / "vendor"), name="vendor")
 
 
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    text: str = Field(min_length=1, max_length=12000)
+
+
 class Ask(BaseModel):
-    question: str
+    question: str = Field(min_length=1, max_length=4000)
+    history: list[ChatMessage] = Field(default_factory=list, max_length=12)
     api_key: str | None = None  # optional paste from the UI; overrides env for this ask
     # Which retrieval mode answers. None/"auto" is the environment's default,
     # which is what every client that predates the picker sends.
@@ -223,13 +232,33 @@ def ask(req: Ask):
     def worker():
         try:
             key = (req.api_key or "").strip() or None
+            context = chat_context.resolve(req.question, [m.model_dump() for m in req.history], key)
+            effective = context['question']
+            if req.history:
+                q.put(("event", {"type": "context", "question": effective,
+                                  "contextual": context['contextual'],
+                                  "needs_clarification": context['needs_clarification']}))
+            if context['needs_clarification']:
+                q.put(("done", {"answer": effective, "citations": [], "needs_clarification": True,
+                                 "resolved_question": req.question, "context_usage": context['usage']}))
+                return
+            plan = chat_categories.plan(effective)
+            classification = plan['classification']
+            q.put(("event", {"type": "classification", **classification}))
+            extra = {"cache_scope": context['cache_scope']} if context['cache_scope'] else {}
+            if plan['task'] in chat_categories.TASK_INSTRUCTIONS:
+                extra['task_instruction'] = chat_categories.TASK_INSTRUCTIONS[plan['task']]
+            if plan['breadth'] == 'survey':
+                extra['n_pages'] = min(12, max(rag.ONESHOT_PAGES, 8))
             result = rag.run_agent(
-                req.question,
+                effective,
                 on_event=lambda ev: q.put(("event", ev)),
                 api_key=key,
                 retrieval=req.retrieval,
+                **extra,
             )
-            q.put(("done", result))
+            q.put(("done", {**result, "classification": classification,
+                             "resolved_question": effective, "context_usage": context['usage']}))
         except Exception as e:
             q.put(("error", f"{type(e).__name__}: {e}"))
         finally:

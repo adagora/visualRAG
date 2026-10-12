@@ -900,7 +900,9 @@ def _replay(cached: dict, emit, started: float) -> dict:
 
 def run_agent(question: str, on_event=None, max_steps: int = MAX_STEPS,
               provider: str | None = None, api_key: str | None = None,
-              mode: str | None = None, retrieval: str | None = None) -> dict:
+              mode: str | None = None, retrieval: str | None = None,
+              cache_scope: str | None = None, task_instruction: str = "",
+              n_pages: int | None = None) -> dict:
     """Answer a question over the visual index.
 
     mode (or PIXELRAG_ASK): oneshot | agent
@@ -917,6 +919,7 @@ def run_agent(question: str, on_event=None, max_steps: int = MAX_STEPS,
         raise ValueError(f"Unknown ask mode {mode!r} (expected oneshot or agent).")
     retrieval = resolve_retrieval(retrieval)  # ubs:ignore — allowlist; no eval sink
 
+    page_budget = ONESHOT_PAGES if n_pages is None else max(1, min(12, n_pages))
     reader = providers.reader_for(provider, api_key)
     trace: list[dict] = []
     started = time.perf_counter()
@@ -933,6 +936,11 @@ def run_agent(question: str, on_event=None, max_steps: int = MAX_STEPS,
     key = ns = None
     if mode == "oneshot":
         ns = _cache_namespace(reader.name, reader.model, mode, retrieval)
+        if cache_scope:
+            ns += ":conversation:" + cache_scope
+        if task_instruction or n_pages is not None:
+            import hashlib
+            ns += f":budget:{page_budget}:task:" + hashlib.sha256(task_instruction.encode()).hexdigest()
         try:
             key = queryembed.embed_query(question.strip())
         except Exception:
@@ -947,9 +955,9 @@ def run_agent(question: str, on_event=None, max_steps: int = MAX_STEPS,
                 return _replay(hit, emit, started)
 
     if mode == "oneshot":
-        result = _read_once(reader, question, emit, trace, retrieval, started)
+        result = _read_once(reader, question, emit, trace, retrieval, started, page_budget, task_instruction)
     else:
-        result = _browse(reader, question, emit, trace, max_steps, retrieval, started)
+        result = _browse(reader, question, emit, trace, max_steps, retrieval, started, task_instruction)
 
     if key is not None and _worth_caching(result):
         try:
@@ -980,7 +988,8 @@ def _worth_caching(result: dict) -> bool:
 
 
 def _read_once(reader, question: str, emit, trace: list[dict],
-               retrieval: str, started: float) -> dict:
+               retrieval: str, started: float, n_pages: int = ONESHOT_PAGES,
+               task_instruction: str = "") -> dict:
     """One-shot: retrieve pages, attach them, one streamed read.
 
     Provider-independent by construction — everything below this line is the
@@ -988,7 +997,7 @@ def _read_once(reader, question: str, emit, trace: list[dict],
     """
     marks: dict[str, float] = {}
     pages, stats = _oneshot_pages(question, emit, reader.image_policy,
-                                  retrieval=retrieval)
+                                  retrieval=retrieval, n_pages=n_pages)
     marks["retrieval"] = time.perf_counter()
     if not pages:
         return _done(prompts.NO_PAGES_PL, trace, providers.Usage(), 1, reader,
@@ -1019,7 +1028,7 @@ def _read_once(reader, question: str, emit, trace: list[dict],
         _stream_answer(emit, piece)
 
     reply = reader.read_pages(
-        system=prompts.ONESHOT_SYSTEM,
+        system=prompts.ONESHOT_SYSTEM + ("\n" + task_instruction if task_instruction else ""),
         preamble=prompts.oneshot_preamble(question, pages),
         pages=pages,
         header_of=prompts.page_header,
@@ -1033,10 +1042,10 @@ def _read_once(reader, question: str, emit, trace: list[dict],
 
 
 def _browse(reader, question: str, emit, trace: list[dict],
-            max_steps: int, retrieval: str, started: float) -> dict:
+            max_steps: int, retrieval: str, started: float, task_instruction: str = "") -> dict:
     """Agent mode: the reader drives, opening regions until it can answer."""
     reply = reader.browse(
-        system=prompts.SYSTEM, question=question, tools=prompts.TOOLS,
+        system=prompts.SYSTEM + ("\n" + task_instruction if task_instruction else ""), question=question, tools=prompts.TOOLS,
         dispatch=_dispatcher(retrieval), on_event=emit, max_steps=max_steps)
     # No retrieval or first-token mark: retrieval happens inside the loop, once
     # per tool call, and each of those search events carries its own stats.
