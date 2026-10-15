@@ -1,0 +1,336 @@
+#!/usr/bin/env python
+"""Local chat UI over the visual index, showing the agent's browsing path.
+
+Thin web front end over rag.py. Local rather than a static page because it needs
+the Anthropic key server-side and has to reach the search API on localhost.
+
+    # 1. search API (leave running)
+    KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 .venv/bin/pixelrag serve \
+      --index-dir ./index --tiles-dir ./index/tiles \
+      --articles-json ./index/articles.json --port 30001 --device cpu
+
+    # 2. this UI
+    export ANTHROPIC_API_KEY=...           # or paste a key in the UI
+    .venv/bin/python scripts/app.py        # http://127.0.0.1:8000
+"""
+
+import json
+import queue
+import sys
+import threading
+import os
+import asyncio
+from pathlib import Path
+from urllib.parse import quote, unquote
+
+import requests
+import uvicorn
+from fastapi import FastAPI, Query, Request, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+from typing import Literal
+
+import compare as compare_modes
+import corpus
+import chat_categories
+import chat_context
+import queryembed
+import rag
+import snip
+import visual_query
+
+HERE = Path(__file__).parent
+STATIC = HERE / "static"
+if not STATIC.exists():
+    STATIC = Path(sys.prefix) / "share" / "pixelrag" / "static"
+app = FastAPI(title="PixelRAG manuals")
+
+# pdf.js, vendored (scripts/static/vendor). Local rather than a CDN because the
+# app is expected to work on a box with no internet, and because the worker
+# script must be same-origin.
+app.mount("/vendor", StaticFiles(directory=STATIC / "vendor"), name="vendor")
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    text: str = Field(min_length=1, max_length=12000)
+
+
+class Ask(BaseModel):
+    question: str = Field(min_length=1, max_length=4000)
+    history: list[ChatMessage] = Field(default_factory=list, max_length=12)
+    api_key: str | None = None  # optional paste from the UI; overrides env for this ask
+    # Which retrieval mode answers. None/"auto" is the environment's default,
+    # which is what every client that predates the picker sends.
+    retrieval: str | None = None
+    query_image: str | None = Field(default=None, max_length=7_000_000)
+    pages: int | None = Field(default=None, ge=1, le=12)
+    experimental_chat: bool = False
+
+
+class Compare(BaseModel):
+    """Retrieval only, several modes, one question. No answer-reader calls."""
+
+    question: str = Field(min_length=1, max_length=4000)
+    modes: list[str] | None = None
+    pages: int | None = Field(default=None, ge=1, le=12)
+    query_image: str | None = Field(default=None, max_length=7_000_000)
+
+
+@app.get("/", response_class=HTMLResponse)
+def index():
+    # Explicit UTF-8: Windows locale encoding mangles Polish (ąęł…) and dashes.
+    return HTMLResponse(
+        (STATIC / "index.html").read_text(encoding="utf-8"),
+        media_type="text/html; charset=utf-8",
+    )
+
+
+@app.get("/api/modes")
+def retrieval_modes(experiments: bool = False):
+    """The retrieval modes this box can actually run, and why not where it can't.
+
+    The UI greys out a blocked mode and shows the reason rather than hiding it:
+    "jev — TYPESAFE_API_KEY is not set" is a setup instruction, and a mode that
+    silently vanished is a bug report.
+    """
+    return {"modes": compare_modes.modes(experiments=True) if experiments else compare_modes.modes(), "default": rag.default_retrieval(),
+            "pages": rag.ONESHOT_PAGES}
+
+
+@app.post("/api/compare")
+def compare_retrieval(req: Compare):
+    """Stream one row per retrieval mode: what it found and what it cost.
+
+    Server-sent events for the same reason /api/ask uses them — each mode is a
+    second or more of real retrieval and they run sequentially by design (see
+    compare.py), so the table fills in as the modes finish instead of arriving
+    all at once after the slowest one.
+    """
+    try:
+        image = visual_query.decode_image(req.query_image)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    def stream():
+        try:
+            rows = []
+            results = (compare_modes.compare(req.question, req.modes, req.pages, query_image=image)
+                       if image is not None else compare_modes.compare(req.question, req.modes, req.pages))
+            for row in results:
+                rows.append(row)
+                yield _sse({"kind": "row", "payload": row})
+            yield _sse({"kind": "done",
+                        "payload": {"agreement": compare_modes.agreement(rows)}})
+        except Exception as e:
+            yield _sse({"kind": "error", "payload": f"{type(e).__name__}: {e}"})
+
+    return StreamingResponse(stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache",
+                                      "X-Accel-Buffering": "no"})
+
+
+def _sse(payload: dict) -> str:
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+@app.get("/api/docs")
+def list_docs():
+    out = []
+    for i, a in enumerate(corpus.articles()):
+        out.append({"article_id": i, "title": a["title"],
+                    "pages": len(corpus.LAYOUT.page_images(i))})
+    return {"docs": out, "process_id": os.getpid(), "owner_token": os.environ.get("PIXELRAG_OWNER_TOKEN")}
+
+
+@app.get("/api/page/{article_id}/{page}")
+def page_image(article_id: int, page: int):
+    """Full page image; `page` is 1-based, matching what the UI shows."""
+    p = corpus.page_path(article_id, page - 1)
+    if not p.exists():
+        return JSONResponse({"error": "no such page"}, status_code=404)
+    return FileResponse(p, media_type="image/jpeg")
+
+
+@app.get("/api/snip/{article_id}/{page}")
+def citation_snip(
+    article_id: int,
+    page: int,
+    rects: str | None = Query(
+        None,
+        description="JSON list of {left,top,width,height} in %% of the page",
+    ),
+    pad: float = Query(4.0, ge=0, le=40, description="padding around the union box, %%"),
+):
+    """Crop of the rendered page around citation rectangles, for chat inline.
+
+    Rects are the same percent-of-page boxes `citations.py` and the PDF viewer
+    use. What the crop actually shows — padding, minimum size, the fallback band
+    for an unverified citation — is snip.py's business, not this route's.
+    """
+    src = corpus.page_path(article_id, page - 1)
+    if not src.exists():
+        return JSONResponse({"error": "no such page"}, status_code=404)
+
+    boxes = []
+    if rects:
+        try:
+            boxes = snip.parse_boxes(json.loads(unquote(rects)))
+        except json.JSONDecodeError:
+            return JSONResponse({"error": "bad rects json"}, status_code=400)
+
+    return Response(
+        snip.render(src, boxes, pad=pad),
+        media_type="image/jpeg",
+        headers={"Cache-Control": "private, max-age=3600"},
+    )
+
+
+@app.get("/api/pdf/{article_id}")
+def source_pdf(article_id: int):
+    """The original PDF — this is what the viewer actually renders.
+
+    Served with byte ranges (Starlette's FileResponse honours Range) so pdf.js
+    can fetch only the pages it draws. That is not a micro-optimisation: the gate
+    price list is 82 MB, and without ranges every question would pull the whole
+    file before the first pixel appears.
+
+    `inline`, not `attachment`: the same URL backs the "otwórz PDF ↗" link, and
+    a download prompt there is not what the user asked for.
+    """
+    arts = corpus.articles()
+    if not 0 <= article_id < len(arts):
+        return JSONResponse({"error": "no such document"}, status_code=404)
+    src = corpus.source_pdf(article_id)
+    if src is None:
+        return JSONResponse({"error": "source file missing"}, status_code=404)
+    # Headers go out as latin-1, so a Polish file name ("Cennik - Bramy
+    # garażowe.pdf") crashes the response unless it is percent-encoded per
+    # RFC 5987, with an ASCII-stripped fallback for anything that ignores that.
+    ascii_name = src.name.encode("ascii", "replace").decode("ascii").replace('"', "")
+    disp = (f'inline; filename="{ascii_name}"; '
+            f"filename*=UTF-8''{quote(src.name, safe='')}")
+    return FileResponse(
+        src, media_type="application/pdf",
+        headers={"Content-Disposition": disp,
+                 "Cache-Control": "private, max-age=86400"},
+    )
+
+
+@app.get("/api/tile/{article_id}/{tile_index}/{chunk_index}")
+def tile_image(article_id: int, tile_index: int, chunk_index: int):
+    """Proxy a single region image, so the UI can show exactly what the agent saw.
+
+    Through rag's pooled session, not a bare requests.get: this fires once per
+    region the UI draws, which is precisely the traffic the connection pool was
+    introduced for — a handshake and a lingering TIME_WAIT per call otherwise.
+    """
+    try:
+        r = rag._HTTP.get(
+            f"{rag.SEARCH_API}/tile/{article_id}/{tile_index}/{chunk_index}", timeout=60)
+        if not r.ok:
+            return JSONResponse({"error": "tile fetch failed"}, status_code=502)
+        return StreamingResponse(iter([r.content]),
+                                 media_type=r.headers.get("content-type", "image/png"))
+    except requests.RequestException as e:
+        return JSONResponse({"error": str(e)}, status_code=503)
+
+
+@app.post("/api/ask")
+def ask(req: Ask, request: Request):
+    """Server-sent events: the agent's steps as they happen, then the answer.
+
+    Streaming matters here — a browsing agent takes several model round trips,
+    and watching it search and open tiles is most of the diagnostic value.
+    """
+    try:
+        image = visual_query.decode_image(req.query_image)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    q: queue.Queue = queue.Queue(maxsize=128)
+    cancelled = threading.Event()
+
+    def post(item):
+        while not cancelled.is_set():
+            try:
+                q.put(item, timeout=.2)
+                return
+            except queue.Full:
+                pass
+
+    def event(ev):
+        post(("event", ev))
+
+    def worker():
+        try:
+            key = (req.api_key or "").strip() or None
+            context = (chat_context.resolve(req.question, [m.model_dump() for m in req.history], key)
+                       if req.experimental_chat else {"question": req.question, "contextual": False,
+                           "needs_clarification": False, "usage": {}, "cache_scope": None})
+            effective = context['question']
+            if req.experimental_chat and req.history:
+                q.put(("event", {"type": "context", "question": effective,
+                                  "contextual": context['contextual'],
+                                  "needs_clarification": context['needs_clarification']}))
+            if context['needs_clarification']:
+                q.put(("done", {"answer": effective, "citations": [], "needs_clarification": True,
+                                 "resolved_question": req.question, "context_usage": context['usage']}))
+                return
+            plan = (chat_categories.plan(effective) if req.experimental_chat else
+                    {"classification": {}, "task": "other", "breadth": "pointed"})
+            classification = plan['classification']
+            if req.experimental_chat:
+                post(("event", {"type": "classification", **classification}))
+            extra = {"cache_scope": context['cache_scope']} if context['cache_scope'] else {}
+            if plan['task'] in chat_categories.TASK_INSTRUCTIONS:
+                extra['task_instruction'] = chat_categories.TASK_INSTRUCTIONS[plan['task']]
+            if plan['breadth'] == 'survey':
+                extra['n_pages'] = min(12, max(rag.ONESHOT_PAGES, 8))
+            extra.update(n_pages=req.pages if req.pages is not None else extra.get('n_pages', rag.ONESHOT_PAGES),
+                         is_cancelled=cancelled.is_set)
+            if image is not None:
+                extra['query_image'] = image
+            result = rag.run_agent(
+                effective,
+                on_event=event,
+                api_key=key,
+                retrieval=req.retrieval,
+                **extra,
+            )
+            post(("done", {**result, "classification": classification,
+                             "resolved_question": effective, "context_usage": context['usage']}))
+        except Exception as e:
+            post(("error", f"{type(e).__name__}: {e}"))
+        finally:
+            post((None, None))
+
+    threading.Thread(target=worker, daemon=True).start()
+
+    async def stream():
+        try:
+            while not await request.is_disconnected():
+                try:
+                    kind, payload = await asyncio.to_thread(q.get, True, .2)
+                except queue.Empty:
+                    continue
+                if kind is None:
+                    break
+                yield _sse({"kind": kind, "payload": payload})
+        finally:
+            cancelled.set()
+
+    return StreamingResponse(stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache",
+                                      "X-Accel-Buffering": "no"})
+
+
+if __name__ == "__main__":
+    rag.configure_logging()
+    if not rag.INDEX_DIR.exists():
+        sys.exit(f"No index at {rag.INDEX_DIR} — build it first (see README).")
+    # The query encoder lives here rather than in the faiss process (see
+    # queryembed.py). Load it now, in the background, so the first question
+    # doesn't pay for it.
+    if queryembed.LOCAL_ENCODE:
+        threading.Thread(target=queryembed.warm_encoder, daemon=True).start()
+    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")

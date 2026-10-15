@@ -1,0 +1,1102 @@
+{
+  "schema_version": 1,
+  "review_status": "agent_inspected_draft",
+  "label_provenance": "Mechanically remapped from independently authored agent-inspected draft PDF labels. Pixels flattened at120dpi; no OCR; no human review.",
+  "split_policy": "Single available source document; held out page/product families. Document-held-out evaluation cannot be claimed.",
+  "outstanding_review": [
+    "Human audit of remapped answers and pixel preservation",
+    "Build an isolated fixture index before retrieval benchmark",
+    "No corpus-wide absence claim for this reduced corpus"
+  ],
+  "sources": [
+    {
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "path": "eval/fixtures/px1-textless.pdf",
+      "sha256": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "page_count": 4
+    }
+  ],
+  "questions": [
+    {
+      "id": "scan-vg-004",
+      "q": "Jakie wymiary w świetle mają kratki K-1 pokazane na rysunku 52?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 1,
+          "rectangles": [
+            [
+              0.06,
+              0.16,
+              0.25,
+              0.29
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "426 x 89 mm",
+        "facts": [
+          {
+            "kind": "dimensions",
+            "values": [
+              426,
+              89
+            ],
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of figure 52; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-005",
+      "q": "Ile kratek w jednym panelu wolno zastosować przy So=3500 mm w bramie UniPro z drzwiami przejściowymi?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 1,
+          "rectangles": [
+            [
+              0.06,
+              0.6,
+              0.49,
+              0.7
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "2 kratki",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 2,
+            "unit": "kratki"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of table 13; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-006",
+      "q": "Ile kratek w jednym panelu dopuszczono przy So=3500 mm w bramie UniPro bez drzwi przejściowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 1,
+          "rectangles": [
+            [
+              0.06,
+              0.71,
+              0.49,
+              0.8
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "4 kratki",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 4,
+            "unit": "kratki"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of table 14; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-007",
+      "q": "Jaki przepływ powietrza podano dla K-1?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 1,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "464 m3/h",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 464,
+            "unit": "m3/h"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-008",
+      "q": "Jaki przepływ powietrza podano dla K-2?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 1,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "746 m3/h",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 746,
+            "unit": "m3/h"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-009",
+      "q": "Jaki przepływ podano dla K-3 w pozycji otwartej?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 1,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "159 m3/h",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 159,
+            "unit": "m3/h"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-010",
+      "q": "W którym panelu od dołu pokazano kratki K-1 na rysunku 53 bramy UniPro?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 1,
+          "rectangles": [
+            [
+              0.24,
+              0.16,
+              0.45,
+              0.29
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "W pierwszym panelu od dołu",
+        "facts": [
+          {
+            "kind": "entity",
+            "value": "pierwszym",
+            "aliases": [
+              "pierwszy",
+              "1."
+            ]
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of figure 53; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-011",
+      "q": "Ile uchwytów zawiera zestaw uchyłu górnego panelu dla S=4600 mm?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 1,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "4 szt.",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 4,
+            "unit": "szt."
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-015",
+      "q": "Co oznacza detal numer 1 na rysunku UniPro SNP 2.0?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 2,
+          "rectangles": [
+            [
+              0.51,
+              0.29,
+              0.75,
+              0.42
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "Boczna uszczelka i maskownica ościeżnicy w kolorze bramy",
+        "facts": [
+          {
+            "kind": "entity",
+            "value": "uszczelka",
+            "aliases": []
+          },
+          {
+            "kind": "entity",
+            "value": "maskownica",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of numbered detail 1; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-016",
+      "q": "Co oznacza detal numer 2 na rysunku UniPro SNP 2.0?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 2,
+          "rectangles": [
+            [
+              0.75,
+              0.29,
+              0.94,
+              0.42
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "Prowadnice skręcane z ościeżnicą",
+        "facts": [
+          {
+            "kind": "entity",
+            "value": "prowadnice",
+            "aliases": []
+          },
+          {
+            "kind": "entity",
+            "value": "skręcane",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of numbered detail 2; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-017",
+      "q": "Co oznacza detal numer 4 na rysunku UniPro SNP 2.0?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 2,
+          "rectangles": [
+            [
+              0.75,
+              0.42,
+              0.94,
+              0.54
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "Podwójne otwory montażowe",
+        "facts": [
+          {
+            "kind": "entity",
+            "value": "podwójne",
+            "aliases": []
+          },
+          {
+            "kind": "entity",
+            "value": "otwory montażowe",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of numbered detail 4; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-018",
+      "q": "Na jakiej wysokości od podstawy ościeżnicy znajduje się znacznik SNP 2.0?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 2,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "950 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 950,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-019",
+      "q": "Jaką minimalną przestrzeń boczną po każdej stronie pokazuje przekrój SNP 2.0 Wersja 1?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 2,
+          "rectangles": [
+            [
+              0.06,
+              0.59,
+              0.28,
+              0.75
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "100 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 100,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of Wersja 1 horizontal section; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-020",
+      "q": "Jakie minimalne nadproże dla napędu SPARK wskazuje pionowy przekrój SNP 2.0 Wersja 1?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 2,
+          "rectangles": [
+            [
+              0.28,
+              0.59,
+              0.49,
+              0.77
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "120 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 120,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of Wersja 1 SNP 2.0 with footnote 2 SPARK; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-021",
+      "q": "Z jakiej grubości stali wykonano ościeżnice SNP 2.0 i SSt 2.0?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 2,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "2 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 2,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-022",
+      "q": "Ile wynosi cena netto w PLN bramy UniPro ręczna, woodgrain RAL 9016, So=3000 mm i Ho=2000 mm według tabeli wymiarów typowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-price-white-woodgrain",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 3,
+          "rectangles": [
+            [
+              0.06,
+              0.15,
+              0.94,
+              0.27
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "4349 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 4349,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact price row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-023",
+      "q": "Ile wynosi cena netto w PLN bramy UniPro automatyczna MOTO, woodgrain RAL 9016, So=3000 mm i Ho=2000 mm według tabeli wymiarów typowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-price-white-woodgrain",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 3,
+          "rectangles": [
+            [
+              0.06,
+              0.27,
+              0.94,
+              0.4
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "5433 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 5433,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact price row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-024",
+      "q": "Ile wynosi cena netto w PLN bramy UniPro automatyczna METRO, woodgrain RAL 9016, So=3000 mm i Ho=2000 mm według tabeli wymiarów typowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-price-white-woodgrain",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 3,
+          "rectangles": [
+            [
+              0.06,
+              0.4,
+              0.94,
+              0.52
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "6014 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 6014,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact price row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-025",
+      "q": "Ile wynosi cena netto w PLN bramy UniPro automatyczna SPARK, woodgrain RAL 9016, So=3000 mm i Ho=2000 mm według tabeli wymiarów typowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-price-white-woodgrain",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 3,
+          "rectangles": [
+            [
+              0.06,
+              0.52,
+              0.94,
+              0.64
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "5372 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 5372,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact price row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-026",
+      "q": "Ile wynosi cena netto w PLN bramy UniPro ręczna, woodgrain RAL 9016, So=5500 mm i Ho=2500 mm według tabeli wymiarów typowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-price-white-woodgrain",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 3,
+          "rectangles": [
+            [
+              0.06,
+              0.15,
+              0.94,
+              0.27
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "8061 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 8061,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact price row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null,
+        "secondary_review": {
+          "reviewer": "Codex root",
+          "method": "Direct page-image inspection of source page 36; corrected width from 6000 to 5500. The 6000/2500 cell is blank.",
+          "status": "agent_verified"
+        }
+      }
+    },
+    {
+      "id": "scan-vg-027",
+      "q": "Ile wynosi cena netto w PLN bramy UniPro automatyczna METRO, woodgrain RAL 9016, So=5500 mm i Ho=2500 mm według tabeli wymiarów typowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-price-white-woodgrain",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 3,
+          "rectangles": [
+            [
+              0.06,
+              0.4,
+              0.94,
+              0.52
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "10010 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 10010,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact price row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null,
+        "secondary_review": {
+          "reviewer": "Codex root",
+          "method": "Direct page-image inspection of source page 36; corrected width from 6000 to 5500. The 6000/2500 cell is blank.",
+          "status": "agent_verified"
+        }
+      }
+    },
+    {
+      "id": "scan-vg-042",
+      "q": "Jaka jest cena netto w PLN drzwi DoorLight 45 D1B77, S=1100 mm i H=2200 mm?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "test",
+      "page_family": "doorlight-price",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 4,
+          "rectangles": [
+            [
+              0.06,
+              0.21,
+              0.94,
+              0.32
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "3956 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 3956,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact model, row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-043",
+      "q": "Jaka jest cena netto w PLN drzwi DoorLight 45 D1B100, S=1100 mm i H=2200 mm?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "test",
+      "page_family": "doorlight-price",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 4,
+          "rectangles": [
+            [
+              0.06,
+              0.33,
+              0.94,
+              0.48
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "4136 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 4136,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact model, row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-044",
+      "q": "Jaka jest cena netto w PLN drzwi DoorLight 45 D2B77, S=2000 mm i H=2400 mm?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "test",
+      "page_family": "doorlight-price",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 4,
+          "rectangles": [
+            [
+              0.06,
+              0.64,
+              0.94,
+              0.77
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "7452 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 7452,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact model, row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "scan-vg-045",
+      "q": "Jaka jest cena netto w PLN drzwi DoorLight 45 D2B100, S=2000 mm i H=2400 mm?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "test",
+      "page_family": "doorlight-price",
+      "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+          "page": 4,
+          "rectangles": [
+            [
+              0.06,
+              0.77,
+              0.94,
+              0.9
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "7950 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 7950,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact model, row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    }
+  ]
+}

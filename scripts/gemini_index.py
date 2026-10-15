@@ -1,162 +1,238 @@
-"""Page-image embeddings and exact cosine search for small Gemini corpora.
-
-The model, dimensions and query format come from the index manifest. Never
-fall back to Qwen vectors: those live in a different embedding space.
-"""
+﻿"""Immutable PDF page images, Gemini embeddings, and NumPy search."""
 from __future__ import annotations
-
 import argparse
 import hashlib
 import json
 import os
-from functools import lru_cache
 from pathlib import Path
 import shutil
-import tempfile
+import threading
 
 import numpy as np
 from dotenv import load_dotenv
-
-import layout
+import index_manifest
 
 QUERY_PREFIX = "task: search result | query: "
 MODEL = "gemini-embedding-2"
+DIMENSIONS = (768, 1536, 3072)
+_CLIENT = None
+_CLIENT_LOCK = threading.Lock()
 
 
-def enabled() -> bool:
-    return os.environ.get("PIXELRAG_EMBED_BACKEND", "qwen").lower() == "gemini"
-
-
-@lru_cache(maxsize=1)
 def client():
-    from google import genai
-    load_dotenv(layout.ROOT / ".env", override=False)
-    key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if not key:
-        raise RuntimeError("Gemini embeddings require GEMINI_API_KEY or GOOGLE_API_KEY.")
-    return genai.Client(api_key=key)
+    """One shared SDK client; environment variables take precedence over .env."""
+    global _CLIENT
+    with _CLIENT_LOCK:
+        if _CLIENT is None:
+            load_dotenv(Path.cwd() / ".env", override=False)
+            load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
+            key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+            if not key:
+                raise RuntimeError("Set GEMINI_API_KEY or GOOGLE_API_KEY in the environment or .env.")
+            from google import genai
+            from google.genai import types
+            _CLIENT = genai.Client(api_key=key, http_options=types.HttpOptions(
+                timeout=60_000, retry_options=types.HttpRetryOptions(attempts=1)))
+        return _CLIENT
 
 
 def embed(contents, model: str, dimensions: int) -> np.ndarray:
     from google.genai import types
-    result = client().models.embed_content(
-        model=model, contents=contents,
+    owner = client()
+    result = owner.models.embed_content(model=model, contents=contents,
         config=types.EmbedContentConfig(output_dimensionality=dimensions))
     if not result.embeddings or len(result.embeddings) != 1:
         raise ValueError("Expected one Gemini embedding per page/query.")
     vector = np.asarray(result.embeddings[0].values, dtype=np.float32)
     norm = np.linalg.norm(vector)
-    if vector.shape != (dimensions,) or not np.isfinite(vector).all() or norm == 0:
+    if vector.shape != (dimensions,) or not np.isfinite(vector).all() or not np.isfinite(norm) or norm == 0:
         raise ValueError("Invalid Gemini embedding dimensions or values.")
     return vector / norm
 
 
-@lru_cache(maxsize=4)
-def _load(index_dir: str, stamp: tuple):
-    root = Path(index_dir)
-    manifest = json.loads((root / "gemini.json").read_text())
-    if manifest.get("format") != 1 or not manifest.get("model", "").startswith("gemini-embedding-2"):
-        raise ValueError("Unsupported Gemini index; rebuild with scripts/gemini_index.py.")
-    vectors = np.load(root / "gemini.npy", allow_pickle=False)
-    if vectors.shape != (len(manifest["pages"]), manifest["dimensions"]):
-        raise ValueError("Gemini index manifest/vector mismatch; rebuild the index.")
-    if not np.isfinite(vectors).all() or not np.allclose(np.linalg.norm(vectors, axis=1), 1, atol=1e-4):
-        raise ValueError("Gemini index contains invalid or unnormalized vectors.")
-    return manifest, vectors
+def _json(path):
+    return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
-def load(index: layout.IndexLayout | None = None):
-    index = index or layout.DEFAULT
-    paths = [index.index_dir / name for name in ("gemini.json", "gemini.npy")]
-    if not all(p.exists() for p in paths):
-        raise FileNotFoundError("Gemini index missing; run scripts/gemini_index.py first.")
-    stamp = tuple((p.stat().st_mtime_ns, p.stat().st_size) for p in paths)
-    return _load(str(index.index_dir), stamp)
+def _validate_vectors(vectors, count, dimensions):
+    if vectors.shape != (count, dimensions):
+        raise ValueError("Gemini manifest/vector dimensions mismatch.")
+    if not np.issubdtype(vectors.dtype, np.floating) or not np.isfinite(vectors).all() or not np.allclose(np.linalg.norm(vectors, axis=1), 1, atol=1e-4):
+        raise ValueError("Invalid or unnormalized Gemini vectors.")
 
 
-@lru_cache(maxsize=256)
-def _query(text: str, model: str, dimensions: int, prefix: str) -> tuple:
-    return tuple(embed(prefix + text, model, dimensions).tolist())
+class Index:
+    """Load an explicit snapshot or resolve a collection's active pointer once."""
+    def __init__(self, path: Path | str):
+        self.snapshot_dir = index_manifest.resolve_snapshot(Path(path))
+        root = self.snapshot_dir
+        self.manifest = _json(root / "gemini.json")
+        meta = index_manifest.load(root)
+        if meta is None:
+            raise ValueError("Missing manifest.json; rebuild the index.")
+        dimensions = self.manifest.get("dimensions")
+        if self.manifest.get("format") != 1 or self.manifest.get("model") != MODEL or dimensions not in DIMENSIONS:
+            raise ValueError("Unsupported Gemini model or dimensions.")
+        self._pages = self.manifest["pages"]
+        self._vectors = np.load(root / "gemini.npy", allow_pickle=False)
+        _validate_vectors(self._vectors, len(self._pages), dimensions)
+        if not self._pages or meta.get("vector_count") != len(self._pages):
+            raise ValueError("Index page count mismatch.")
+        encoder = meta.get("encoder", {})
+        if encoder.get("model") != MODEL or encoder.get("dimensions") != dimensions:
+            raise ValueError("Index encoder metadata mismatch.")
+        articles = _json(root / "articles.json")
+        self._sources, self._hashes, self._documents = {}, {}, {}
+        self.documents = []
+        for doc in meta.get("documents", []):
+            aid, count, digest = doc["article_id"], doc["pages"], doc["sha256"]
+            if type(aid) is not int or aid < 0 or aid in self._documents or type(count) is not int or count < 1:
+                raise ValueError("Invalid document/page identity.")
+            if not isinstance(digest, str) or len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
+                raise ValueError("Invalid source SHA256.")
+            if doc["source_id"] != "doc-" + digest[:24]:
+                raise ValueError("Source identity mismatch.")
+            if aid >= len(articles) or articles[aid].get("sha256") != digest or articles[aid].get("source_id") != doc["source_id"]:
+                raise ValueError("Article/source identity mismatch.")
+            source = (root / doc["snapshot_path"]).resolve()
+            if not source.is_relative_to(root) or source.parent != (root / "sources").resolve() or source.suffix.lower() != ".pdf":
+                raise ValueError("Source must be a PDF inside snapshot sources/.")
+            self._sources[aid], self._hashes[aid] = source, digest
+            row = {"article_id": aid, "source_id": doc["source_id"], "title": doc["title"], "pages": count}
+            self.documents.append(row)
+            self._documents[aid] = row
+            self.source_pdf(aid)
+        if not self.documents or len(articles) != len(self.documents):
+            raise ValueError("Index document count mismatch.")
+        expected = {(d["article_id"], p) for d in self.documents for p in range(d["pages"])}
+        actual = []
+        for row in self._pages:
+            aid, page = row["article_id"], row["tile_index"]
+            if type(aid) is not int or type(page) is not int:
+                raise ValueError("Invalid indexed page identity.")
+            actual.append((aid, page))
+        if len(actual) != len(expected) or set(actual) != expected:
+            raise ValueError("Indexed pages do not match source page counts.")
+        for aid, page in actual:
+            self.page_path(aid, page + 1)
+        self._vectors.flags.writeable = False
 
+    def _document(self, article_id):
+        if type(article_id) is not int or article_id not in self._documents:
+            raise ValueError("Unknown document.")
+        return self._documents[article_id]
 
-def embed_query(text: str) -> list[float]:
-    manifest, _ = load()
-    return list(_query(text, manifest["model"], manifest["dimensions"], manifest["query_prefix"]))
+    def page_path(self, article_id: int, page: int) -> Path:
+        doc = self._document(article_id)
+        if type(page) is not int or not 1 <= page <= doc["pages"]:
+            raise ValueError("Page is outside the document.")
+        path = self.snapshot_dir / "tiles" / f"{article_id}.png.tiles" / f"tile_{page - 1:04d}.jpg"
+        if not path.is_file() or not path.resolve().is_relative_to(self.snapshot_dir):
+            raise ValueError("Missing or invalid indexed page image.")
+        return path
 
+    def source_pdf(self, article_id: int) -> Path:
+        doc = self._document(article_id)
+        path = self._sources[article_id]
+        if not path.resolve().is_relative_to(self.snapshot_dir):
+            raise ValueError("Source PDF escapes its snapshot.")
+        if hashlib.sha256(path.read_bytes()).hexdigest() != self._hashes[article_id]:
+            raise ValueError("Source PDF hash mismatch.")
+        import pymupdf
+        with pymupdf.open(path) as pdf:
+            if len(pdf) != doc["pages"]:
+                raise ValueError("Source PDF page count mismatch.")
+        return path
 
-def search(query: str, n_results: int) -> list[dict]:
-    manifest, vectors = load()
-    q = np.asarray(embed_query(query), dtype=np.float32)
-    scores = vectors @ q
-    order = np.argsort(-scores, kind="stable")[:max(1, n_results)]
-    return [{"article_id": manifest["pages"][i]["article_id"],
-             "tile_index": manifest["pages"][i]["tile_index"],
-             "chunk_index": 0, "score": float(scores[i])} for i in order]
+    def search(self, question: str, *, image: bytes | None = None, limit: int = 4) -> list[dict]:
+        if type(limit) is not int or limit < 1:
+            raise ValueError("Search limit must be a positive integer.")
+        if not isinstance(question, str) or (not question.strip() and image is None):
+            raise ValueError("Provide a question or reference image.")
+        if image is None:
+            contents = self.manifest.get("query_prefix", QUERY_PREFIX) + question
+        else:
+            from google.genai import types
+            contents = [types.Part.from_bytes(data=image, mime_type="image/png")]
+            if question.strip():
+                contents.append(question)
+        query = embed(contents, self.manifest["model"], self.manifest["dimensions"])
+        _validate_vectors(np.asarray(query)[None, :], 1, self.manifest["dimensions"])
+        scores = self._vectors @ query
+        order = np.argsort(-scores, kind="stable")[:limit]
+        return [{"article_id": self._pages[i]["article_id"],
+                 "source_id": self._documents[self._pages[i]["article_id"]]["source_id"],
+                 "page": self._pages[i]["tile_index"] + 1,
+                 "document": self._documents[self._pages[i]["article_id"]]["title"],
+                 "score": float(scores[i])} for i in order]
 
 
 def build(pdfs: list[Path], output: Path, *, model: str = MODEL,
-          dimensions: int = 768, titles: list[str] | None = None) -> dict:
-    """Render and embed each page independently; publish only a complete build."""
+          dimensions: int = 3072, titles: list[str] | None = None) -> dict:
+    """Render and embed one page per request, then atomically publish."""
+    import pymupdf
     from google.genai import types
-    from pixelrag_render.render import render_pdf
-    if not pdfs or dimensions not in (768, 1536, 3072):
-        raise ValueError("Provide PDFs and dimensions 768, 1536 or 3072.")
+    if not pdfs or dimensions not in DIMENSIONS or model != MODEL:
+        raise ValueError("Provide PDFs, gemini-embedding-2, and dimensions 768, 1536 or 3072.")
     if titles is not None and len(titles) != len(pdfs):
         raise ValueError("Provide one title per PDF.")
-    output = output.resolve()
-    if output.exists():
-        raise FileExistsError(f"{output} already exists; choose a new output directory.")
-    output.parent.mkdir(parents=True, exist_ok=True)
-    stage = Path(tempfile.mkdtemp(prefix=".gemini-build-", dir=output.parent))
-    idx = layout.IndexLayout(stage)
-    articles, pages, vectors = [], [], []
+    output = Path(output).resolve()
+    stage = index_manifest.begin_snapshot(output)
+    articles, pages, vectors, documents = [], [], [], []
     try:
         for aid, source in enumerate(pdfs):
-            source = source.resolve()
+            source = Path(source).resolve()
             title = titles[aid] if titles else source.stem
-            articles.append({"title": title, "url": str(source),
-                             "document_type": "document",
-                             "sha256": hashlib.sha256(source.read_bytes()).hexdigest()})
-            # Upstream's renderer writes the page JPEGs and a one-chunk-per-page
-            # chunks.json; only the embedding is ours.
-            render_pdf(source, idx.tiles_dir, stem=str(aid))
-            images = idx.page_images(aid)
-            for ti, image in enumerate(images):
-                # Multiple images in a request aggregate into ONE vector.
-                # One request/page preserves citation-level retrieval.
-                vector = embed(types.Part.from_bytes(data=image.read_bytes(), mime_type="image/jpeg"),
-                               model, dimensions)
-                vectors.append(vector)
-                pages.append({"article_id": aid, "tile_index": ti})
-                print(f"{title}: page {ti + 1}/{len(images)}", flush=True)
-        if not vectors:
-            raise ValueError("PDFs contain no pages.")
-        idx.articles_json.write_text(json.dumps(articles, ensure_ascii=False))
-        import lexical
-        lexical.build_sidecar(articles, out_path=idx.text_sidecar)
+            raw = source.read_bytes()
+            digest = hashlib.sha256(raw).hexdigest()
+            sid = "doc-" + digest[:24]
+            saved = stage / "sources" / (digest + ".pdf")
+            saved.parent.mkdir(exist_ok=True)
+            saved.write_bytes(raw)
+            tiles = stage / "tiles" / f"{aid}.png.tiles"
+            tiles.mkdir(parents=True)
+            with pymupdf.open(saved) as pdf:
+                if not len(pdf) or pdf.needs_pass:
+                    raise ValueError("Provide a nonempty, unencrypted PDF.")
+                count = len(pdf)
+                for number, page in enumerate(pdf):
+                    image = tiles / f"tile_{number:04d}.jpg"
+                    page.get_pixmap(dpi=200, colorspace=pymupdf.csRGB, alpha=False).save(image, jpg_quality=85)
+                    vectors.append(embed(types.Part.from_bytes(data=image.read_bytes(), mime_type="image/jpeg"), model, dimensions))
+                    pages.append({"article_id": aid, "tile_index": number})
+                    print(f"{title}: page {number + 1}/{count}", flush=True)
+            articles.append({"title": title, "url": "sources/" + saved.name,
+                             "document_type": "document", "sha256": digest, "source_id": sid})
+            documents.append({"article_id": aid, "source_id": sid, "sha256": digest,
+                              "snapshot_path": "sources/" + saved.name, "title": title, "pages": count})
+        matrix = np.stack(vectors)
+        _validate_vectors(matrix, len(pages), dimensions)
         manifest = {"format": 1, "model": model, "dimensions": dimensions,
                     "query_prefix": QUERY_PREFIX, "input": "page-image", "pages": pages}
-        (stage / "gemini.json").write_text(json.dumps(manifest))
-        np.save(stage / "gemini.npy", np.stack(vectors), allow_pickle=False)
-        idx.summary_json.write_text(json.dumps({"backend": "gemini", "pages": len(pages), "model": model}))
-        stage.rename(output)
-        return manifest
+        (stage / "articles.json").write_text(json.dumps(articles, ensure_ascii=False), encoding="utf-8")
+        (stage / "gemini.json").write_text(json.dumps(manifest), encoding="utf-8")
+        np.save(stage / "gemini.npy", matrix, allow_pickle=False)
+        snapshot = {"schema_version": 1, "index_id": stage.name.removeprefix(".staging-"),
+                    "encoder": {"backend": "gemini", "model": model, "dimensions": dimensions},
+                    "render": {"engine": "pymupdf", "dpi": 200, "jpeg_quality": 85}, "chunking": {"mode": "page"},
+                    "documents": documents, "vector_count": len(pages)}
+        (stage / "manifest.json").write_text(json.dumps(snapshot, ensure_ascii=False), encoding="utf-8")
+        Index(stage)
+        final = index_manifest.publish_snapshot(output, stage, snapshot)
+        return {**manifest, "index_dir": str(final)}
     finally:
         if stage.exists():
             shutil.rmtree(stage)
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("pdfs", type=Path, nargs="+")
-    ap.add_argument("--output", type=Path, required=True)
-    ap.add_argument("--model", default=MODEL)
-    ap.add_argument("--dimensions", type=int, default=768, choices=[768, 1536, 3072])
-    ap.add_argument("--title", action="append",
-                    help="document title; repeat once per PDF (default: file name)")
-    args = ap.parse_args()
-    build(args.pdfs, args.output, model=args.model, dimensions=args.dimensions,
-          titles=args.title)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("pdfs", type=Path, nargs="+")
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--dimensions", type=int, default=3072, choices=DIMENSIONS)
+    parser.add_argument("--title", action="append")
+    args = parser.parse_args()
+    print(json.dumps(build(args.pdfs, args.output, dimensions=args.dimensions, titles=args.title)))
 
 
 if __name__ == "__main__":

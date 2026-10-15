@@ -1,229 +1,158 @@
-import pytest
-import requests
+"""Real image preparation and mocked HTTP; no paid decisions in the test suite."""
+import base64
+import io
+from http.client import IncompleteRead
+import json
+from types import SimpleNamespace
+from unittest.mock import Mock
+from urllib.error import HTTPError, URLError
 
-import corpus
+from PIL import Image
+import pytest
 import jev
 
 
-def choices(questions, probability=0.5):
-    out = {}
-    for key, q in questions.items():
-        if q["type"] == "choice":
-            a, b = sorted(q["criteria"], key=int)
-            out[key] = {"choice": a if probability >= 0.5 else b,
-                        "probabilities": {a: probability, b: 1 - probability}}
-    return out
-
-
-@pytest.fixture(autouse=True)
-def configured(monkeypatch):
+@pytest.fixture
+def sample(tmp_path, monkeypatch):
     monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
-    monkeypatch.setenv("PIXELRAG_JEV", "1")
+    monkeypatch.delenv("TYPESAFE_MODEL", raising=False)
+    hits, paths = [], {}
+    for number in range(8):
+        path = tmp_path / f"{number}.jpg"
+        Image.new("RGB", (2000, 2400), (number * 20, 10, 20)).save(path)
+        hits.append({"article_id": 0, "source_id": "source", "document": "Catalog",
+                     "page": number + 1, "score": 1 - number / 10})
+        paths[0, number + 1] = path
+    index = SimpleNamespace(page_path=lambda aid, page: paths[aid, page])
+    response = {"model": jev.MODEL, "usage": {"input_tokens": 100, "output_tokens": 8},
+                "answers": {f"page_{i}": {"type": "noul", "noul": i / 10} for i in range(8)}}
+    request = Mock(return_value=response)
+    monkeypatch.setattr(jev, "_request", request)
+    return index, hits, response, request
 
 
-def hit(i, score=0.8):
-    return {"article_id": 0, "tile_index": i, "chunk_index": 1, "score": score}
+def test_one_image_question_per_candidate_and_actual_model(sample):
+    index, hits, response, request = sample
+    reference = io.BytesIO()
+    Image.new("RGB", (40, 600), "white").save(reference, format="PNG")
+    ranked, report = jev.rerank(index, "Which product?", hits, image=reference.getvalue())
+    assert [p["page"] for p in ranked] == [8, 7, 6, 5]
+    assert ranked[0]["score"] == hits[7]["score"]  # Preserve dense similarity separately.
+    assert "jev_score" not in hits[7]
+    assert report["status"] == "applied" and report["scored_count"] == 8
+    assert report["model"] == report["requested_model"] == "jev-1.14.0"
+    assert report["usage"]["input_tokens"] == 100
+    request.assert_called_once()
+    payload, key = request.call_args.args
+    assert key == "test-key" and payload["model"] == jev.MODEL
+    assert set(payload["state"]) == {"question", "reference_image"}
+    assert len(payload["assets"]) == 9 and len(payload["questions"]) == 8
+    refs = [q["instructions"]["candidate"]["image"] for q in payload["questions"].values()]
+    assert len(set(refs)) == 8
+    assert payload["state"]["reference_image"] not in refs
+    for asset in payload["assets"].values():
+        assert asset["format"] == "jpg"
+        with Image.open(io.BytesIO(base64.b64decode(asset["data_base64"]))) as image:
+            assert 256 <= min(image.size) <= max(image.size) <= jev.MAX_SIDE
+            assert image.width * image.height >= 78400
+            assert not image.info.get("progressive")
 
 
-def texts(text):
-    """A `texts_fn`: the same string for every candidate in the pool."""
-    return lambda hits: [text] * len(hits)
+@pytest.mark.parametrize("value", [True, -0.1, 1.01, float("nan"), float("inf"), "0.9", None])
+def test_invalid_probability_preserves_original_ranking(sample, value):
+    index, hits, response, request = sample
+    response["answers"]["page_3"]["noul"] = value
+    ranked, report = jev.rerank(index, "Question", hits)
+    assert ranked == hits[:4] and report["status"] == "fallback"
+    assert report["scored_count"] == 0 and report["calls"] == 1
 
 
-def test_disabled_makes_no_jev_call(monkeypatch):
-    monkeypatch.setenv("PIXELRAG_JEV", "0")
-    assert jev.search("q", 1, lambda q, n: [hit(0)], None) == [hit(0)]
+@pytest.mark.parametrize("change", ["missing_answer", "wrong_type", "no_model", "invalid_usage"])
+def test_malformed_response_is_not_partly_applied(sample, change):
+    index, hits, response, request = sample
+    if change == "missing_answer": del response["answers"]["page_0"]
+    if change == "wrong_type": response["answers"]["page_0"]["type"] = "score"
+    if change == "no_model": del response["model"]
+    if change == "invalid_usage": response["usage"]["input_tokens"] = True
+    ranked, report = jev.rerank(index, "Question", hits)
+    assert ranked == hits[:4] and report["status"] == "fallback"
 
 
-def test_expansion_selects_facets_and_preserves_original(monkeypatch):
-    monkeypatch.setattr(jev, "evaluate", lambda *args: {
-        str(i): {"noul": 0.9 if i == 0 else 0.1} for i in range(len(jev.FACETS))})
-    variants = jev.expand("Ile kosztuje brama?")
-    assert variants[:2] == ["Ile kosztuje brama?", "brama"]
-    assert variants[2] == "brama " + jev.FACETS[0]
+def test_ties_retain_original_order(sample):
+    index, hits, response, request = sample
+    for answer in response["answers"].values(): answer["noul"] = .5
+    ranked, report = jev.rerank(index, "Question", hits)
+    assert [p["page"] for p in ranked] == [1, 2, 3, 4]
 
 
-def test_rerank_promotes_expanded_chunk_before_cutoff(monkeypatch):
-    monkeypatch.setattr(jev, "expand", lambda q, report=None: [q, "expanded"])
-    seen = []
-    def evaluate(state, questions, report=None, kind=""):
-        seen.append(state)
-        return choices(questions, 0.1)
-    monkeypatch.setattr(jev, "evaluate", evaluate)
-    result = jev.search("q", 1,
-                        lambda q, n: [hit(0)] if q == "q" else [hit(0), hit(1)],
-                        lambda hs: [f"chunk {h['tile_index']}" for h in hs])
-    assert result[0]["tile_index"] == 1
-    assert result[0]["retrieval_score"] == 0.8
-    assert seen[0]["query"] == "q"
-    assert len(seen[0]["chunks"]) == 2
+def test_missing_key_and_empty_retrieval_make_no_request(sample, monkeypatch):
+    index, hits, response, request = sample
+    monkeypatch.delenv("TYPESAFE_API_KEY")
+    ranked, report = jev.rerank(index, "Question", hits)
+    assert ranked == hits[:4] and report["calls"] == 0
+    assert report["status"] == "fallback"
+    assert jev.rerank(index, "Question", [])[1]["status"] == "skipped"
+    request.assert_not_called()
 
 
-@pytest.mark.parametrize("bad", [float("nan"), -1, 4, "2", True])
-def test_invalid_probabilities_fall_back_atomically(monkeypatch, bad):
-    monkeypatch.setattr(jev, "expand", lambda q, report=None: [q])
-    monkeypatch.setattr(jev, "evaluate", lambda *args: {"pair_0_1": {"choice": "0", "probabilities": {"0": bad, "1": 0.5}}})
-    assert jev.search("q", 1, lambda q, n: [hit(0), hit(1)], texts("text")) == [hit(0)]
+def test_transport_failure_preserves_dense_order(sample):
+    index, hits, response, request = sample
+    request.side_effect = jev.JevError("Jev request failed (TimeoutError).")
+    ranked, report = jev.rerank(index, "Question", hits)
+    assert ranked == hits[:4] and report["status"] == "fallback"
+    assert "TimeoutError" in report["reason"]
 
 
-def test_api_failure_and_missing_text_preserve_retrieval(monkeypatch):
-    def fail(*args):
-        raise requests.Timeout()
-    monkeypatch.setattr(jev, "evaluate", fail)
-    assert jev.search("q", 1, lambda q, n: [hit(0)], texts("text")) == [hit(0)]
-    assert jev.search("q", 1, lambda q, n: [hit(0)], texts("")) == [hit(0)]
+def test_cancellation_is_not_treated_as_fallback(sample):
+    index, hits, response, request = sample
+    class Cancelled(RuntimeError): pass
+    def cancel(): raise Cancelled()
+    with pytest.raises(Cancelled):
+        jev.rerank(index, "Question", hits, check_cancelled=cancel)
+    request.assert_not_called()
 
 
 def test_http_contract(monkeypatch):
+    seen = []
     class Response:
-        def raise_for_status(self):
-            pass
-        def json(self):
-            return {"answers": {"a": {"noul": 0.9}},
-                    "usage": {"input_tokens": 312, "output_tokens": 48}}
-    def post(url, **kwargs):
-        assert url == jev.ENDPOINT
-        # Asserts the header is BUILT right, against a fake literal. Nothing is
-        # authenticated here, so there is no timing surface to defend.
-        auth = kwargs["headers"]["Authorization"]
-        assert auth == "Bearer test-key"  # ubs:ignore — fake literal, not a secret
-        assert kwargs["json"]["model"] == "jev-latest"
-        assert kwargs["timeout"] == 20
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def read(self, limit): return b'{"model":"jev-1.14.0"}'
+    def open_request(request, timeout):
+        seen.append((request, timeout))
         return Response()
-    monkeypatch.setattr(jev.requests, "post", post)
-    assert jev.evaluate("state", {"a": {"type": "noul"}})["a"]["noul"] == 0.9
+    monkeypatch.setattr(jev, "urlopen", open_request)
+    assert jev._request({"test": 1}, "secret")["model"] == jev.MODEL
+    request, timeout = seen[0]
+    assert request.full_url == "https://api.typesafe.ai/v1/systemone"
+    assert request.method == "POST" and timeout == jev.TIMEOUT
+    headers = {key.lower(): value for key, value in request.header_items()}
+    assert headers["typesafe-danger-zone-images"] == "true"
+    assert headers["authorization"] == "Bearer secret"
+    assert json.loads(request.data) == {"test": 1}
 
 
-def test_chunk_text_uses_crop_geometry(monkeypatch, tmp_path):
-    import fitz
-    import rag
-    import chunkmeta
-    path = tmp_path / "source.pdf"
-    with fitz.open() as pdf:
-        page = pdf.new_page(width=200, height=200)
-        page.insert_text((20, 30), "inside")
-        page.insert_text((20, 150), "outside")
-        pdf.save(path)
-    monkeypatch.setattr(corpus, "source_pdf", lambda aid: path)
-    monkeypatch.setattr(corpus, "page_size", lambda aid, ti: (400, 400))
-    monkeypatch.setattr(chunkmeta, "get", lambda *args:
-                        chunkmeta.Chunk(0, 1, "region", 0, 0, 400, 200))
-    text = rag._chunk_text(hit(0))
-    assert "inside" in text
-    assert "outside" not in text
+@pytest.mark.parametrize("error", [HTTPError(jev.ENDPOINT, 429, "private body", {}, io.BytesIO(b"private body")),
+                                    URLError("secret provider detail"), TimeoutError("secret"), IncompleteRead(b"private")])
+def test_http_errors_expose_no_request_or_provider_details(monkeypatch, error):
+    monkeypatch.setattr(jev, "urlopen", Mock(side_effect=error))
+    with pytest.raises(jev.JevError) as raised:
+        jev._request({}, "private-key")
+    assert "private" not in str(raised.value) and "secret" not in str(raised.value)
 
 
-# -- what the stage reports having done -------------------------------------
-
-def test_the_report_counts_the_funnel_and_the_tokens(monkeypatch):
-    """The comparison table is only worth reading if these numbers are real."""
-    monkeypatch.setattr(jev, "expand", lambda q, report=None: [q, "expanded"])
-
-    def evaluate(state, questions, report=None, kind=""):
-        report.calls.append(jev.Call(kind, 40.0, 900, 60))
-        return choices(questions)
-
-    monkeypatch.setattr(jev, "evaluate", evaluate)
-    report = jev.Report()
-    jev.search("q", 2, lambda q, n: [hit(0)] if q == "q" else [hit(0), hit(1)],
-               texts("tekst"), report)
-    assert report.candidates == 2 and report.scored == 2
-    assert report.reranked and not report.fallbacks
-    assert report.input_tokens == 900 and report.output_tokens == 60
-    assert set(report.stages) == {"expand", "candidates", "text", "rerank"}
+def test_invalid_decisions_retain_known_billed_usage(sample):
+    index, hits, response, request = sample
+    response["answers"]["page_0"]["noul"] = True
+    ranked, report = jev.rerank(index, "Question", hits)
+    assert report["status"] == "fallback" and report["model"] == jev.MODEL
+    assert report["usage"]["input_tokens"] == 100
 
 
-def test_a_degraded_run_says_so_rather_than_looking_like_a_clean_one(monkeypatch):
-    """Missing text preserves the original retrieval — which is indistinguishable
-    from a successful rerank in every field except this one."""
-    monkeypatch.setattr(jev, "expand", lambda q, report=None: [q])
-    report = jev.Report()
-    out = jev.search("q", 1, lambda q, n: [hit(0)], texts(""), report)
-    assert out == [hit(0)]
-    assert not report.reranked and report.fallbacks
-    assert "PDF text" in report.fallbacks[0]
-
-
-def test_one_unreadable_crop_does_not_abort_the_whole_rerank(monkeypatch):
-    """Measured cause of the stage silently not running on 1 question in 6: a
-    single blind candidate out of forty used to discard the other thirty-nine."""
-    monkeypatch.setattr(jev, "expand", lambda q, report=None: [q])
-    asked = {}
-
-    def evaluate(state, questions, report=None, kind=""):
-        asked.update(state["chunks"])
-        return choices(questions)
-
-    monkeypatch.setattr(jev, "evaluate", evaluate)
-    report = jev.Report()
-    out = jev.search("q", 2, lambda q, n: [hit(0), hit(1), hit(2)],
-                     # hit 1 is an image-only crop with no text layer
-                     lambda hits: ["tekst", "   ", "tekst"], report)
-    assert report.reranked and report.scored == 2 and report.blind == 1
-    assert sorted(asked) == ["0", "2"]          # keyed by position in the pool
-    assert [h["tile_index"] for h in out] == [0, 2]
-    assert report.fallbacks and "no PDF text" in report.fallbacks[0]
-
-
-def test_the_existence_check_rides_along_with_the_rerank(monkeypatch):
-    """One extra Noul on a state that was already being sent."""
-    monkeypatch.setattr(jev, "expand", lambda q, report=None: [q])
-    asked = {}
-
-    def evaluate(state, questions, report=None, kind=""):
-        asked.update(questions)
-        return {**choices(questions),
-                jev.ANSWERABLE: {"noul": 0.04}}
-
-    monkeypatch.setattr(jev, "evaluate", evaluate)
-    report = jev.Report()
-    out = jev.search("q", 2, lambda q, n: [hit(0), hit(1)], texts("tekst"), report)
-    assert len(out) == 2                      # the ranking is unaffected by it
-    assert asked[jev.ANSWERABLE]["type"] == "noul"
-    assert report.answerable == 0.04
-    assert report.best_score == 0.5
-
-
-def test_a_broken_existence_check_does_not_lose_the_ranking(monkeypatch):
-    monkeypatch.setattr(jev, "expand", lambda q, report=None: [q])
-    monkeypatch.setattr(jev, "evaluate", lambda *a, **k: {"0": {"score": 3.0}})
-    report = jev.Report()
-    out = jev.search("q", 1, lambda q, n: [hit(0)], texts("tekst"), report)
-    assert out[0]["score"] == 1.0 and report.reranked
-    assert report.answerable is None
-
-
-def test_a_failed_call_is_still_billed_and_still_reported(monkeypatch):
-    """A malformed response cost tokens and took time; hiding that would make a
-    broken mode look like the cheap one."""
-    class Response:
-        def raise_for_status(self):
-            pass
-        def json(self):
-            return {"answers": ["not", "an", "object"],
-                    "usage": {"input_tokens": 120, "output_tokens": 8}}
-
-    monkeypatch.setattr(jev.requests, "post", lambda url, **kw: Response())
-    report = jev.Report()
-    with pytest.raises(ValueError):
-        jev.evaluate("state", {"a": {"type": "noul"}}, report, "expand")
-    assert report.input_tokens == 120 and report.calls[0].kind == "expand"
-
-
-def test_cost_uses_the_published_rate_and_output_is_free(monkeypatch):
-    """docs.typesafe.ai/models.md: $0.042 per 1M in, output tokens free. The
-    re-ranking cookbook's own total is input-token arithmetic exactly, so `free`
-    is quoted, not assumed."""
-    monkeypatch.delenv("TYPESAFE_PRICE_IN", raising=False)
-    monkeypatch.delenv("TYPESAFE_PRICE_OUT", raising=False)
-    assert jev.price(1_000_000, 1_000_000) == pytest.approx(0.042)
-    # A full rerank of this index's pool, for scale.
-    assert jev.price(7_760, 447) == pytest.approx(0.000326, abs=1e-6)
-
-
-def test_an_invoice_rate_overrides_the_list_price(monkeypatch):
-    monkeypatch.setenv("TYPESAFE_PRICE_IN", "2")
-    monkeypatch.setenv("TYPESAFE_PRICE_OUT", "10")
-    assert jev.price(1_000_000, 500_000) == pytest.approx(7.0)
-    monkeypatch.setenv("TYPESAFE_PRICE_IN", "free please")
-    assert jev.price(1, 1) is None
+def test_context_limit_is_reported_without_echoing_payload(monkeypatch):
+    body = io.BytesIO(b'{"detail":{"error_type":"max_tokens_exceeded"},"private":"secret"}')
+    error = HTTPError(jev.ENDPOINT, 400, "Bad Request", {}, body)
+    monkeypatch.setattr(jev, "urlopen", Mock(side_effect=error))
+    with pytest.raises(jev.JevError, match="max_tokens_exceeded") as raised:
+        jev._request({}, "private-key")
+    assert "secret" not in str(raised.value)

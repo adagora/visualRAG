@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "source_sha256": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41",
+  "review_status": "agent_inspected_draft",
+  "limit": "Self-crops from the indexed PDF; this checks image-query plumbing, not performance on independent user photos.",
+  "image_queries": [
+    {"id": "echo-image-01", "page": 4, "rect": [0.48, 0.16, 0.92, 0.46], "gold_page": 4, "description": "Red-covered construction-post rendering"},
+    {"id": "echo-image-02", "page": 18, "rect": [0.43, 0.40, 0.94, 0.72], "gold_page": 18, "description": "Perspective pergola drawing with a partially lowered ZIP screen"},
+    {"id": "echo-image-03", "page": 24, "rect": [0.65, 0.58, 0.95, 0.88], "gold_page": 24, "description": "Four-track SLIDE GLASS profile sections"}
+  ]
+}

@@ -1,0 +1,1333 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wyszukiwanie w dokumentacji — PixelRAG</title>
+<style>
+  /* Design intent: the right half is ONE document — the real PDF, rendered by
+     pdf.js, open at the cited page with the quote highlighted on it. Not a
+     stack of page screenshots: someone checking a price wants the source open
+     in front of them, scrollable and selectable, with the exact line marked. */
+  :root {
+    color-scheme: light dark;
+    --bg:#fbfaf8; --panel:#fff; --ink:#1a1a1a; --muted:#6b6b6b; --line:#e3e1dd;
+    --accent:#b4531f; --soft:#b4531f22; --user:#efece7;
+    --hl:#ffd23f; --hlbd:#c69200;          /* quote highlight (highlighter pen) */
+    --num:#1f7a4d; --numbg:#1f7a4d24;      /* located figures */
+    --warn:#b8541c; --warnbg:#b8541c1f;
+    --r:10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#15151a; --panel:#1d1d23; --ink:#e9e7e3; --muted:#9a978f;
+            --line:#32323b; --accent:#e08a4e; --soft:#e08a4e2b; --user:#25252d;
+            --hl:#ffcf33; --hlbd:#8f6a00; --num:#37d68a; --numbg:#37d68a2b;
+            --warn:#f0a06a; --warnbg:#f0a06a26; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); height:100vh;
+         display:flex; flex-direction:column;
+         font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  header { padding:10px 18px; border-bottom:1px solid var(--line);
+           display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  header h1 { font-size:15px; margin:0; font-weight:650; letter-spacing:-.01em; }
+  .sub { font-size:12.5px; color:var(--muted); }
+  .tools { margin-left:auto; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .keybar { display:flex; align-items:center; gap:6px; }
+  .keybar input { width:min(240px,34vw); padding:6px 10px; border:1px solid var(--line);
+    border-radius:6px; background:var(--panel); color:var(--ink);
+    font:12.5px/1.4 ui-monospace,Menlo,monospace; }
+  .keybar input:focus { outline:2px solid var(--soft); border-color:var(--accent); }
+  .chk { display:flex; gap:5px; align-items:center; cursor:pointer; font-size:12.5px; color:var(--muted); }
+
+  #layout { flex:1; display:grid; grid-template-columns:minmax(0,0.78fr) minmax(0,1.22fr); min-height:0; }
+  @media (max-width:980px){ #layout{ grid-template-columns:1fr; grid-template-rows:1fr 1.15fr; } }
+
+  /* ---------------- chat ---------------- */
+  #chat { display:flex; flex-direction:column; min-height:0; border-right:1px solid var(--line); }
+  #log { flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:16px; }
+  .msg { max-width:96%; }
+  .msg.user { align-self:flex-end; background:var(--user); padding:9px 13px; border-radius:var(--r); }
+  .msg.bot { width:100%; min-width:0; padding:16px 18px; border:1px solid var(--line);
+    border-radius:8px; background:var(--panel); position:relative; overflow-wrap:anywhere;
+    animation:message-in .22s ease-out both; }
+  .msg.bot.categorized { padding-bottom:40px; border-color:var(--category-border);
+    background-image:radial-gradient(ellipse at top left, var(--category-soft), transparent 75%);
+    box-shadow:inset 3px 0 0 var(--category-color); }
+  .category-caption { display:flex; align-items:center; gap:6px; position:absolute;
+    right:16px; bottom:10px; font-size:11px; line-height:1.4; color:var(--muted); }
+  .category-caption::before { content:''; width:6px; height:6px; border-radius:50%;
+    background:var(--category-color); }
+  .msg.bot.failed { border-color:var(--warn); background-image:none; box-shadow:none; }
+  .answer-progress { margin-bottom:12px; display:grid; gap:12px; font-size:13px; }
+  .progress-step { display:flex; align-items:center; gap:10px; color:var(--muted); }
+  .progress-marker { display:grid; place-items:center; width:20px; height:20px; flex:none;
+    border:1px solid var(--line); border-radius:50%; font-size:11px; }
+  .progress-step.active { color:var(--ink); }
+  .progress-step.active .progress-marker { border-color:var(--accent); color:var(--accent); }
+  .progress-step.done .progress-marker { background:var(--numbg); color:var(--num); border-color:var(--num); }
+  button:focus-visible, summary:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  @keyframes message-in { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion:reduce) { .msg.bot, .spin { animation:none; } }
+  @media (max-width:600px) { #log { padding:12px; } .msg.bot { max-width:100%; padding:14px; }
+    .msg.bot.categorized { padding-bottom:38px; } .cite { min-height:44px; } }
+  .msg.bot .body { font-size:14.5px; line-height:1.6; }
+  .msg.bot .body.meta { white-space:pre-wrap; }
+  .msg.bot .body > :first-child { margin-top:0; }
+  .msg.bot .body > :last-child { margin-bottom:0; }
+  .msg.bot .body p { margin:0 0 .7em; }
+  .msg.bot .body strong { font-weight:650; color:var(--ink); }
+  .msg.bot .body em { font-style:italic; color:var(--muted); }
+  .msg.bot .body ol, .msg.bot .body ul { margin:.35em 0 .85em; padding-left:1.35em; }
+  .msg.bot .body li { margin:.28em 0; padding-left:.15em; }
+  .msg.bot .body li > ul, .msg.bot .body li > ol { margin:.2em 0 .35em; }
+  .msg.bot .body li::marker { color:var(--accent); font-weight:600; }
+  .msg.bot .body code { font:500 12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;
+    background:var(--user); padding:.1em .35em; border-radius:4px; }
+  .msg.bot .body > p:has(> em:only-child) { color:var(--muted); font-size:13.5px;
+    border-left:2px solid var(--line); padding-left:10px; }
+  .meta { font-size:12px; color:var(--muted); margin-top:8px; }
+  .trace { display:flex; flex-direction:column; gap:3px; margin:2px 0 10px; }
+  .step { display:flex; gap:8px; font-size:12.5px; color:var(--muted); }
+  .step .ic { width:14px; text-align:center; flex:none; color:var(--accent); font-weight:700; }
+  .step code { font:500 12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink); }
+  .step.viewed { cursor:pointer; }
+  .step.viewed:hover code { color:var(--accent); text-decoration:underline; }
+  .spin { display:inline-block; width:9px; height:9px; border:2px solid var(--soft);
+          border-top-color:var(--accent); border-radius:50%; animation:sp .7s linear infinite; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  .err { color:#c0392b; }
+  @media (prefers-color-scheme: dark){ .err{ color:#ff8b7a; } }
+
+  /* Citation list under an answer — the clickable index into the document. */
+  .cites { margin-top:12px; border-top:1px solid var(--line); padding-top:10px;
+           display:flex; flex-direction:column; gap:6px; }
+  .cites h4 { margin:0 0 2px; font:600 12px/1.4 inherit; color:var(--muted);
+              text-transform:uppercase; letter-spacing:.04em; }
+  .cite { display:flex; gap:8px; align-items:flex-start; padding:6px 8px;
+          border:1px solid var(--line); border-radius:8px; background:var(--panel);
+          cursor:pointer; font-size:13px; text-align:left; width:100%; color:inherit; }
+  .cite:hover { border-color:var(--accent); }
+  .cite[aria-current=true] { border-color:var(--accent); box-shadow:0 0 0 2px var(--soft); }
+  .cite .n { flex:none; width:19px; height:19px; border-radius:5px; background:var(--accent);
+             color:#fff; font:700 11px/19px ui-monospace,Menlo,monospace; text-align:center; }
+  .cite q { font-style:normal; }
+  .cite q::before, .cite q::after { content:'„'; color:var(--muted); }
+  .cite q::after { content:'”'; }
+  .cite .where { color:var(--muted); font-size:12px; }
+  .badge { font:700 10px/1.6 ui-monospace,Menlo,monospace; padding:0 5px; border-radius:4px;
+           border:1px solid var(--num); color:var(--num); background:var(--numbg); flex:none; }
+  .badge.no { border-color:var(--warn); color:var(--warn); background:var(--warnbg); }
+
+  form { display:flex; gap:8px; padding:13px 18px; border-top:1px solid var(--line); }
+  input[type=text] { flex:1; min-width:0; padding:10px 13px; border:1px solid var(--line);
+    border-radius:var(--r); background:var(--panel); color:var(--ink); font:inherit; }
+  input[type=text]:focus { outline:2px solid var(--soft); border-color:var(--accent); }
+  button.go { padding:10px 16px; border:0; border-radius:var(--r); background:var(--accent);
+    color:#fff; font:600 14px/1 inherit; cursor:pointer; }
+  button.go:disabled { opacity:.5; cursor:default; }
+
+  /* ---------------- retrieval comparison ---------------- */
+  /* One card per mode, stacked — not a wide table. The chat column is the
+     narrow half of the layout, and four modes across eight numbers does not
+     fit in it at any font size worth reading. */
+  .cmp { display:flex; flex-direction:column; gap:8px; margin:2px 0 6px; }
+  .mode { border:1px solid var(--line); border-radius:var(--r); background:var(--panel);
+          padding:9px 11px; }
+  .mode.bad { opacity:.7; }
+  .mode .hd { display:flex; align-items:baseline; gap:8px; }
+  .mode .nm { font:700 12.5px/1.4 ui-monospace,Menlo,monospace; }
+  .mode .ms { margin-left:auto; font:700 12.5px/1.4 ui-monospace,Menlo,monospace;
+              color:var(--accent); }
+  .tag { font:600 10px/1.7 ui-monospace,Menlo,monospace; padding:0 5px; border-radius:4px;
+         border:1px solid var(--line); color:var(--muted); }
+  .tag.on { border-color:var(--accent); color:var(--accent); background:var(--soft); }
+  .facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(74px,1fr));
+           gap:5px 10px; margin-top:8px; }
+  .fact b { display:block; font:700 13px/1.35 ui-monospace,Menlo,monospace; }
+  .fact span { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .pgs { display:flex; flex-wrap:wrap; gap:4px; margin-top:9px; }
+  .pg-chip { border:1px solid var(--line); border-radius:6px; padding:1px 7px; background:var(--bg);
+             color:var(--ink); font:600 11.5px/1.75 ui-monospace,Menlo,monospace; cursor:pointer; }
+  .pg-chip:hover { border-color:var(--accent); color:var(--accent); }
+  /* Dashed = only this mode returned that page. The whole reason to run the
+     comparison is to see where the modes disagree, so mark it on the page. */
+  .pg-chip.solo { border-style:dashed; color:var(--muted); }
+  .mini { padding:3px 9px; border:1px solid var(--line); background:var(--bg); color:var(--ink);
+          border-radius:6px; font:600 11.5px/1.5 inherit; cursor:pointer; margin-top:9px; }
+  .mini:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+  .mini:disabled { opacity:.5; cursor:default; }
+  .note { color:var(--warn); font-size:11.5px; margin-top:6px; }
+  .dim { color:var(--muted); }
+
+  /* Details panel — the numbers behind the summary, collapsed by default. */
+  .det { margin-top:8px; }
+  .det > summary { cursor:pointer; font-size:11.5px; color:var(--muted); }
+  .det > summary:hover { color:var(--accent); }
+  .det table { border-collapse:collapse; width:100%; margin:6px 0 2px; }
+  .det td { padding:1px 8px 1px 0; vertical-align:top;
+            font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .det td:first-child { color:var(--muted); white-space:nowrap; width:1%; }
+  .det h5 { margin:9px 0 0; font:600 11px/1.5 inherit; color:var(--muted);
+            text-transform:uppercase; letter-spacing:.04em; }
+
+  /* ---------------- pdf viewer ---------------- */
+  #viewer { display:flex; flex-direction:column; min-height:0; min-width:0; }
+  .vbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+          padding:8px 12px; border-bottom:1px solid var(--line); background:var(--panel); }
+  .vbar select { max-width:min(42ch,38vw); padding:4px 8px; border:1px solid var(--line);
+    border-radius:6px; background:var(--bg); color:var(--ink); font:600 12.5px/1.4 inherit; }
+  .vbar .grp { display:flex; align-items:center; gap:4px; }
+  .vbar button { padding:3px 9px; border:1px solid var(--line); background:var(--bg);
+    color:var(--ink); border-radius:6px; font:600 12px/1.5 inherit; cursor:pointer; }
+  .vbar button:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+  .vbar button:disabled { opacity:.4; cursor:default; }
+  .vbar button[aria-pressed=true] { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .vbar input.pg { width:4.5ch; padding:3px 4px; text-align:center; border:1px solid var(--line);
+    border-radius:6px; background:var(--bg); color:var(--ink);
+    font:600 12px/1.5 ui-monospace,Menlo,monospace; }
+  .vbar .tot { font:600 12px/1.5 ui-monospace,Menlo,monospace; color:var(--muted); }
+  .vbar a { margin-left:auto; font:500 12px/1.3 inherit; color:var(--muted); text-decoration:none; }
+  .vbar a:hover { color:var(--accent); text-decoration:underline; }
+
+  /* margin:auto rather than justify-content:center — a flex-centred child wider
+     than the scroll container has its left edge clipped and unreachable. */
+  #stage { flex:1; overflow:auto; min-height:0; padding:12px; background:var(--bg); }
+  #stage.empty { display:flex; align-items:center; justify-content:center; }
+  .vempty { color:var(--muted); font-size:13.5px; max-width:44ch; text-align:center; }
+  /* The page itself: canvas + selectable text + our marks, all in one stack. */
+  #pagebox { position:relative; margin:0 auto; width:max-content; background:#fff;
+             box-shadow:0 1px 3px #0003, 0 8px 24px #0000001a; }
+  #pagebox.hide { display:none; }
+  #pdfCanvas { display:block; }
+  #marks { position:absolute; inset:0; pointer-events:none; }
+  #loading { position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+             background:#ffffffb0; font-size:12.5px; color:var(--muted); }
+  #pagebox.busy #loading { display:flex; }
+  @media (prefers-color-scheme: dark){ #loading { background:#1d1d23b0; } }
+
+  /* pdf.js text layer — the rules the library needs to place its spans, lifted
+     from pdf_viewer.css. It sits above the canvas so the PDF text is
+     selectable; the marks layer above it is pointer-events:none. */
+  .textLayer { position:absolute; text-align:initial; inset:0; overflow:clip; opacity:1;
+    line-height:1; text-size-adjust:none; forced-color-adjust:none; transform-origin:0 0;
+    caret-color:CanvasText; z-index:1; }
+  .textLayer :is(span,br) { color:transparent; position:absolute; white-space:pre;
+    cursor:text; transform-origin:0% 0%; }
+  .textLayer > :not(.markedContent),
+  .textLayer .markedContent span:not(.markedContent) { z-index:1; }
+  .textLayer span.markedContent { top:0; height:0; }
+  .textLayer span[role=img] { user-select:none; cursor:default; }
+  .textLayer ::selection { background:color-mix(in srgb, AccentColor, transparent 75%); }
+  .textLayer br::selection { background:transparent; }
+  .textLayer .endOfContent { display:block; position:absolute; inset:100% 0 0; z-index:0;
+    cursor:default; user-select:none; }
+  .textLayer.selecting .endOfContent { top:0; }
+
+  /* Quote highlight: translucent wash + underline, so the text stays readable. */
+  .hl { position:absolute; background:color-mix(in srgb, var(--hl) 42%, transparent);
+        border-bottom:2px solid var(--hlbd); border-radius:2px;
+        box-shadow:0 0 0 1px color-mix(in srgb, var(--hlbd) 40%, transparent);
+        transition:box-shadow .2s; }
+  .hl.other { background:color-mix(in srgb, var(--hl) 20%, transparent);
+              border-bottom-color:color-mix(in srgb, var(--hlbd) 55%, transparent); }
+  /* No text-layer match: the visually matched region, marked as approximate. */
+  .hl.approx { background:color-mix(in srgb, var(--hl) 16%, transparent);
+               border:2px dashed var(--hlbd); border-radius:4px; }
+  .hl.flash { animation:fl 1.2s ease-out 2; }
+  @keyframes fl { 0%,100%{ box-shadow:0 0 0 1px color-mix(in srgb,var(--hlbd) 40%,transparent); }
+                  50%{ box-shadow:0 0 0 6px color-mix(in srgb,var(--hl) 55%,transparent),
+                                 0 0 18px 6px color-mix(in srgb,var(--hlbd) 45%,transparent); } }
+  .hl b { position:absolute; left:0; top:-1.55em; background:var(--hlbd); color:#fff;
+          padding:0 5px; border-radius:4px; font:700 10px/1.55 ui-monospace,Menlo,monospace;
+          white-space:nowrap; box-shadow:0 1px 4px #0004; }
+
+  /* Figures from the answer prose, located on this page. */
+  .num { position:absolute; border:2px solid var(--num); background:var(--numbg);
+         border-radius:3px; }
+  .num.amb { border-style:dashed; border-color:var(--muted); background:transparent; }
+  .num b { position:absolute; left:50%; bottom:100%; transform:translateX(-50%);
+           margin-bottom:3px; background:var(--num); color:#fff; padding:1px 5px;
+           border-radius:4px; font:700 10px/1.5 ui-monospace,Menlo,monospace; white-space:nowrap; }
+  .num.amb b { display:none; }
+
+  /* PixelRAG's matched region — diagnostic, off by default. */
+  .box { position:absolute; border:1px dashed var(--accent); opacity:.45; border-radius:2px; }
+  body:not(.show-chunks) .box { display:none; }
+
+  /* Footer: which citation is on screen, and how much to trust it. */
+  .vfoot { border-top:1px solid var(--line); background:var(--panel);
+           padding:7px 12px; font-size:12.5px; color:var(--muted);
+           display:flex; align-items:center; gap:10px; flex-wrap:wrap; min-height:34px; }
+  .vfoot .cn { font:700 11px/1.6 ui-monospace,Menlo,monospace; color:var(--ink); flex:none; }
+  .vfoot q { color:var(--ink); font-style:normal; }
+  .vfoot .warn { color:var(--warn); }
+  .vfoot button { padding:1px 7px; border:1px solid var(--line); background:var(--bg);
+    color:var(--ink); border-radius:5px; font:600 11px/1.5 inherit; cursor:pointer; }
+  .vfoot button:hover { border-color:var(--accent); color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Dokumentacja — wyszukiwanie wizualne</h1>
+  <span class="sub" id="corpus">ładowanie korpusu…</span>
+  <div class="tools">
+    <label class="keybar">
+      <span class="sub">klucz API</span>
+      <input id="apiKey" type="password" autocomplete="off" spellcheck="false"
+             placeholder="opcjonalnie — nadpisuje zmienną środowiskową">
+    </label>
+    <label class="keybar">
+      <span class="sub">wyszukiwanie</span>
+      <select id="mode" title="tryb wyszukiwania użyty do odpowiedzi"></select>
+    </label>
+    <label class="chk"><input type="checkbox" id="cmp"
+      title="porównaj tryby wyszukiwania — samo wyszukiwanie, bez czytnika"> porównaj tryby</label>
+    <label class="chk"><input type="checkbox" id="chunks"> regiony PixelRAG</label>
+    <button type="button" class="mini" id="newChat">Nowa rozmowa</button>
+  </div>
+</header>
+
+<div id="layout">
+  <section id="chat">
+    <div id="log">
+      <div class="msg bot"><div class="body">Zadaj pytanie o zaindeksowane katalogi i cenniki — po polsku lub angielsku. Odpowiedź jest pokazana w oryginalnym PDF-ie po prawej: kliknij cytat, aby otworzyć dokument na tej stronie z podświetlonym fragmentem.</div></div>
+    </div>
+    <form id="form">
+      <input id="q" type="text" autocomplete="off" maxlength="4000" required
+             placeholder="np. Jakie są opcje napędu do bramy roletowej BR-77">
+      <label title="PNG, JPEG lub WebP do 5 MB" style="cursor:pointer">＋ obraz<input id="queryImage" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
+      <button type="button" id="clearImage" hidden>usuń obraz</button>
+      <button class="go" id="send">Zapytaj</button>
+      <button type="button" id="cancelAsk" hidden>Przerwij</button>
+    </form>
+  </section>
+
+  <section id="viewer">
+    <div class="vbar">
+      <select id="docSel" title="dokument" aria-label="dokument"></select>
+      <span class="grp">
+        <button id="prevPg" title="poprzednia strona (PgUp)">◀</button>
+        <input class="pg" id="pgNum" inputmode="numeric" autocomplete="off" aria-label="strona">
+        <span class="tot" id="pgTot">/ –</span>
+        <button id="nextPg" title="następna strona (PgDn)">▶</button>
+      </span>
+      <span class="grp">
+        <button id="zOut" title="pomniejsz">−</button>
+        <button id="zFit" aria-pressed="true" title="dopasuj do szerokości">dopasuj</button>
+        <button id="zIn" title="powiększ">+</button>
+        <span class="tot" id="zLbl">—</span>
+      </span>
+      <a id="openPdf" href="#" target="_blank" rel="noopener" hidden>otwórz PDF ↗</a>
+    </div>
+    <div id="stage" class="empty">
+      <div id="pagebox" class="hide">
+        <canvas id="pdfCanvas"></canvas>
+        <div class="textLayer" id="textLayer"></div>
+        <div id="marks"></div>
+        <div id="loading">renderuję stronę…</div>
+      </div>
+      <div class="vempty" id="vempty">Tutaj otworzy się źródłowy PDF — na stronie, z której pochodzi odpowiedź, z podświetlonym cytatem.</div>
+    </div>
+    <div class="vfoot" id="vfoot"><span>Brak otwartego dokumentu.</span></div>
+  </section>
+</div>
+
+<script type="module">
+import * as pdfjsLib from '/vendor/pdf.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.mjs';
+
+const logEl = document.getElementById('log');
+const form = document.getElementById('form');
+const qEl = document.getElementById('q');
+const sendEl = document.getElementById('send');
+const keyEl = document.getElementById('apiKey');
+const stage = document.getElementById('stage');
+const pagebox = document.getElementById('pagebox');
+const canvas = document.getElementById('pdfCanvas');
+const textLayerEl = document.getElementById('textLayer');
+const marksEl = document.getElementById('marks');
+const vemptyEl = document.getElementById('vempty');
+const vfootEl = document.getElementById('vfoot');
+const docSel = document.getElementById('docSel');
+const pgNum = document.getElementById('pgNum');
+const pgTot = document.getElementById('pgTot');
+const prevPg = document.getElementById('prevPg');
+const nextPg = document.getElementById('nextPg');
+const zLbl = document.getElementById('zLbl');
+const openPdf = document.getElementById('openPdf');
+const modeEl = document.getElementById('mode');
+const cmpEl = document.getElementById('cmp');
+const imageInput = document.getElementById('queryImage');
+const clearImage = document.getElementById('clearImage');
+const cancelAsk = document.getElementById('cancelAsk');
+let queryImage = null, activeRequest = null;
+imageInput.addEventListener('change', async () => {
+  const file = imageInput.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { alert('Obraz może mieć najwyżej 5 MB.'); imageInput.value = ''; return; }
+  queryImage = await new Promise((resolve, reject) => {
+    const reader = new FileReader(); reader.onload = () => resolve(reader.result);
+    reader.onerror = reject; reader.readAsDataURL(file);
+  });
+  clearImage.hidden = false; clearImage.textContent = 'usuń: ' + file.name; qEl.required = false;
+  if (modeEl.value === 'lexical') modeEl.value = 'visual';
+});
+clearImage.addEventListener('click', () => { queryImage = null; imageInput.value = ''; clearImage.hidden = true; qEl.required = true; });
+cancelAsk.addEventListener('click', () => activeRequest?.abort());
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+// Small, escape-first markdown for answer prose — bold/italic, lists, paragraphs.
+// No HTML from the model is trusted; everything is escaped before tags go in.
+function inlineMd(s){
+  let t = esc(s);
+  t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/(^|[^*])\*(?!\s)([^*]+?)(?<!\s)\*(?!\*)/g, '$1<em>$2</em>');
+  t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+  return t;
+}
+function mdToHtml(src){
+  const lines = String(src ?? '').replace(/\r\n?/g, '\n').split('\n');
+  const out = [];
+  let i = 0;
+  while (i < lines.length){
+    if (!lines[i].trim()){ i++; continue; }
+    const isOl = /^(\d+)\.\s+/.test(lines[i]);
+    const isUl = /^([*+\-])\s+/.test(lines[i]);
+    if (isOl || isUl){
+      const ordered = isOl;
+      const tag = ordered ? 'ol' : 'ul';
+      const startMatch = ordered ? lines[i].match(/^(\d+)\.\s+/) : null;
+      const attrs = ordered && startMatch && startMatch[1] !== '1'
+        ? ` start="${esc(startMatch[1])}"` : '';
+      const items = [];
+      while (i < lines.length){
+        const m = ordered
+          ? lines[i].match(/^(\d+)\.\s+(.*)$/)
+          : lines[i].match(/^([*+\-])\s+(.*)$/);
+        if (!m) break;
+        let text = m[2];
+        const nested = [];
+        i++;
+        while (i < lines.length){
+          const nm = lines[i].match(/^\s{2,}([*+\-]|\d+\.)\s+(.*)$/);
+          if (nm){ nested.push(nm[2]); i++; continue; }
+          if (!lines[i].trim()) break;
+          if (/^(\d+)\.\s+/.test(lines[i]) || /^([*+\-])\s+/.test(lines[i])) break;
+          if (/^\s{2,}\S/.test(lines[i])){ text += ' ' + lines[i].trim(); i++; continue; }
+          break;
+        }
+        let li = inlineMd(text);
+        if (nested.length)
+          li += `<ul>${nested.map(t => `<li>${inlineMd(t)}</li>`).join('')}</ul>`;
+        items.push(`<li>${li}</li>`);
+      }
+      out.push(`<${tag}${attrs}>${items.join('')}</${tag}>`);
+      continue;
+    }
+    const para = [];
+    while (i < lines.length && lines[i].trim()
+           && !/^(\d+)\.\s+/.test(lines[i]) && !/^([*+\-])\s+/.test(lines[i])){
+      para.push(lines[i].trim());
+      i++;
+    }
+    out.push(`<p>${inlineMd(para.join(' '))}</p>`);
+  }
+  return out.join('') || `<p>${inlineMd(src)}</p>`;
+}
+
+// ---------------------------------------------------------------- viewer state
+// One document on screen at a time. `pages` remembers what search retrieved
+// (for the region overlay and the document list), `cites` what the answer
+// claimed, so a page can be re-marked whenever we navigate back to it.
+const V = {
+  pdfs: new Map(),          // article_id -> Promise<PDFDocumentProxy>
+  titles: new Map(),        // article_id -> document title
+  pages: new Map(),         // "article:page" -> retrieved page meta (box, score)
+  cites: [], pins: [],
+  active: -1,               // index into V.cites
+  activeRects: [],          // highlight elements of the active citation
+  pdf: null, aid: null, page: 0, total: 0,
+  scale: 1, fit: true,
+  gen: 0, task: null,
+};
+
+function loadPdf(aid){
+  if (!V.pdfs.has(aid)){
+    // disableAutoFetch: the gate price list is 82 MB; with Range requests
+    // pdf.js pulls only the pages we actually render.
+    V.pdfs.set(aid, pdfjsLib.getDocument({
+      url: `/api/pdf/${aid}`, disableAutoFetch: true, rangeChunkSize: 262144,
+    }).promise.catch(err => { V.pdfs.delete(aid); throw err; }));
+  }
+  return V.pdfs.get(aid);
+}
+
+async function show(aid, page, citeIdx = -1){
+  const gen = ++V.gen;
+  V.active = citeIdx;
+  markActiveCiteButton();
+  if (aid !== V.aid || !V.pdf){
+    pagebox.classList.add('busy');
+    let pdf;
+    try {
+      pdf = await loadPdf(aid);
+    } catch (err){
+      pagebox.classList.add('hide'); pagebox.classList.remove('busy');
+      vemptyEl.hidden = false; stage.classList.add('empty');
+      vemptyEl.innerHTML = `<span class="err">Nie udało się otworzyć PDF-a: ${esc(err.message || err)}</span>`;
+      return;
+    }
+    if (gen !== V.gen) return;
+    V.pdf = pdf; V.aid = aid; V.total = pdf.numPages;
+  }
+  vemptyEl.hidden = true; stage.classList.remove('empty');
+  pagebox.classList.remove('hide');
+  V.page = clamp(page | 0 || 1, 1, V.total);
+  syncBar();
+  await render(gen);
+  if (gen !== V.gen) return;
+  drawMarks();
+  focusActive();
+}
+
+function syncBar(){
+  pgNum.value = V.page || '';
+  pgTot.textContent = '/ ' + (V.total || '–');
+  prevPg.disabled = V.page <= 1;
+  nextPg.disabled = !V.total || V.page >= V.total;
+  openPdf.hidden = V.aid == null;
+  if (V.aid != null) openPdf.href = `/api/pdf/${V.aid}#page=${V.page}`;
+  if (docSel.value !== String(V.aid)) docSel.value = String(V.aid);
+  // Before the render, not after it: a page label that lags the page it labels
+  // is worse than no label.
+  renderFoot();
+}
+
+async function render(gen){
+  const page = await V.pdf.getPage(V.page);
+  if (gen !== V.gen) return;
+  const base = page.getViewport({ scale: 1 });
+  if (V.fit) V.scale = clamp((stage.clientWidth - 28) / base.width, 0.1, 8);
+  const vp = page.getViewport({ scale: V.scale });
+  const dpr = clamp(window.devicePixelRatio || 1, 1, 2);
+  const w = Math.round(vp.width), h = Math.round(vp.height);
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+  pagebox.style.width = w + 'px'; pagebox.style.height = h + 'px';
+  marksEl.textContent = ''; textLayerEl.textContent = '';
+
+  if (V.task){ V.task.cancel(); V.task = null; }
+  pagebox.classList.add('busy');
+  const ctx = canvas.getContext('2d', { alpha: false });
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const task = page.render({
+    canvasContext: ctx, viewport: vp,
+    transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null,
+  });
+  V.task = task;
+  try {
+    await task.promise;
+  } catch (err){
+    if (err?.name !== 'RenderingCancelledException') console.error(err);
+    return;
+  } finally {
+    if (V.task === task) V.task = null;
+    if (gen === V.gen) pagebox.classList.remove('busy');
+  }
+  if (gen !== V.gen) return;
+  zLbl.textContent = Math.round(V.scale * 100) + '%';
+
+  // Selectable text over the canvas — copying a price out of the source is a
+  // normal thing to want, and it also makes browser Ctrl-F work on the page.
+  textLayerEl.style.setProperty('--scale-factor', String(V.scale));
+  const tl = new pdfjsLib.TextLayer({
+    textContentSource: page.streamTextContent(), container: textLayerEl, viewport: vp,
+  });
+  try { await tl.render(); } catch { /* text layer is a nicety, never fatal */ }
+  if (gen !== V.gen) textLayerEl.textContent = '';
+}
+
+// All marks for the page now on screen: every citation that lands here (the
+// active one emphasised), the figures found in the answer, and — behind the
+// checkbox — the region PixelRAG actually matched.
+function drawMarks(){
+  marksEl.textContent = '';
+  if (V.aid == null) return;
+  const rect = (cls, r, label, title) => {
+    const d = document.createElement('div');
+    d.className = cls;
+    d.style.cssText = `left:${r.left}%;top:${r.top}%;width:${r.width}%;height:${r.height}%`;
+    if (label != null) d.innerHTML = `<b>${esc(label)}</b>`;
+    if (title) d.title = title;
+    marksEl.appendChild(d);
+    return d;
+  };
+  const here = c => c.article_id === V.aid && c.page === V.page;
+  const meta = V.pages.get(V.aid + ':' + V.page);
+
+  V.activeRects = [];
+  V.cites.forEach((c, i) => {
+    if (!here(c) || c.status === 'unsupported') return;
+    const on = i === V.active;
+    if (c.rects && c.rects.length){
+      c.rects.forEach((r, j) => {
+        const el = rect('hl' + (on ? '' : ' other'), r, j === 0 ? i + 1 : null,
+                        c.quote);
+        if (on) V.activeRects.push(el);
+      });
+    } else if (meta?.box){
+      // No text-layer match — point at the region the visual search matched,
+      // dashed, so it never reads as "this exact line".
+      const el = rect('hl approx' + (on ? '' : ' other'), meta.box, i + 1,
+                      'region dopasowany wizualnie — nie dokładny wiersz');
+      if (on) V.activeRects.push(el);
+    }
+    (c.numbers || []).forEach(v =>
+      rect('num', v, v.value, `${v.value} — występuje raz na tej stronie`));
+  });
+
+  // Agent mode returns no citation block; its figure pins are all we have.
+  if (!V.cites.some(here)){
+    V.pins.filter(here).forEach(p =>
+      rect('num' + (p.ambiguous ? ' amb' : ''), p, p.ambiguous ? null : p.value,
+           p.ambiguous ? `${p.value} — powtarza się na stronie; sprawdź wiersz i kolumnę`
+                       : p.value));
+  }
+  if (meta?.box) rect('box', meta.box, null, 'region dopasowany przez PixelRAG');
+  renderFoot();
+}
+
+function focusActive(){
+  const el = (V.activeRects || [])[0];
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+}
+
+function renderFoot(){
+  const c = V.cites[V.active];
+  if (!c){
+    const t = V.aid != null ? V.titles.get(V.aid) : null;
+    vfootEl.innerHTML = t
+      ? `<span>${esc(t)} — strona ${V.page}${V.total ? ' z ' + V.total : ''}</span>`
+      : '<span>Brak otwartego dokumentu.</span>';
+    return;
+  }
+  const total = V.cites.length;
+  const notes = [];
+  if (!c.rects?.length){
+    notes.push(c.text_layer
+      ? 'Cytatu nie znaleziono w warstwie tekstowej tej strony — sprawdź odpowiedź uważnie.'
+      : 'Strona bez warstwy tekstowej — podświetlono region dopasowany wizualnie.');
+  }
+  const rep = (c.repeated || []).filter(r => r.count > 1);
+  if (rep.length)
+    notes.push('Nie oznaczono (wartość powtarzalna): ' +
+      rep.map(r => `${esc(r.value)} ×${r.count}`).join(', ') + '.');
+  vfootEl.innerHTML = `
+    <span class="cn">cytat ${V.active + 1}/${total}</span>
+    <button id="cPrev" title="poprzedni cytat (←)">◀</button>
+    <button id="cNext" title="następny cytat (→)">▶</button>
+    <q>${esc(c.quote)}</q>
+    ${c.status === 'text-located' ? `<span class="badge" title="znaleziono tekst; treść odpowiedzi wymaga sprawdzenia">tekst</span>` : c.status === 'model-region' ? '<span class="badge">region</span>' : ''}
+    ${notes.length ? `<span class="warn">${notes.join(' ')}</span>` : ''}`;
+  vfootEl.querySelector('#cPrev').onclick = () => stepCite(-1);
+  vfootEl.querySelector('#cNext').onclick = () => stepCite(1);
+}
+
+function stepCite(d){
+  if (!V.cites.length) return;
+  for (let n = 1; n <= V.cites.length; n++) {
+    const i = ((V.active < 0 ? (d > 0 ? -1 : 0) : V.active) + d*n + V.cites.length*2) % V.cites.length;
+    const c = V.cites[i];
+    if (c.article_id != null && c.status !== 'unsupported') return void show(c.article_id, c.page, i);
+  }
+}
+
+let citeBtns = [];
+function markActiveCiteButton(){
+  citeBtns.forEach((b, i) => b.setAttribute('aria-current', String(i === V.active)));
+}
+
+// The document picker lists only what this answer touched — cited pages first,
+// so "1 pdf" stays true without hiding a second source when there is one.
+function syncDocList(){
+  const ids = [];
+  V.cites.filter(c => c.article_id != null).forEach(c => ids.includes(c.article_id) || ids.push(c.article_id));
+  [...V.pages.values()].forEach(p => ids.includes(p.article_id) || ids.push(p.article_id));
+  docSel.innerHTML = ids.map(id => {
+    const n = [...V.pages.values()].filter(p => p.article_id === id).length;
+    return `<option value="${id}">${esc(V.titles.get(id) || '?')}${n > 1 ? ` (${n} stron)` : ''}</option>`;
+  }).join('');
+  docSel.disabled = ids.length < 2;
+  if (V.aid != null) docSel.value = String(V.aid);
+}
+
+docSel.addEventListener('change', () => {
+  const aid = Number(docSel.value);
+  const ci = V.cites.findIndex(c => c.article_id === aid);
+  if (ci >= 0) return void show(aid, V.cites[ci].page, ci);
+  const p = [...V.pages.values()].find(x => x.article_id === aid);
+  show(aid, p ? p.page : 1, -1);
+});
+prevPg.addEventListener('click', () => show(V.aid, V.page - 1, -1));
+nextPg.addEventListener('click', () => show(V.aid, V.page + 1, -1));
+pgNum.addEventListener('change', () => {
+  const n = parseInt(pgNum.value, 10);
+  if (V.aid == null || !Number.isFinite(n)) return syncBar();
+  show(V.aid, n, -1);
+});
+document.getElementById('zIn').addEventListener('click', () => setZoom(V.scale * 1.25));
+document.getElementById('zOut').addEventListener('click', () => setZoom(V.scale / 1.25));
+document.getElementById('zFit').addEventListener('click', () => {
+  V.fit = true; document.getElementById('zFit').setAttribute('aria-pressed', 'true');
+  reflow();
+});
+function setZoom(s){
+  V.fit = false; document.getElementById('zFit').setAttribute('aria-pressed', 'false');
+  V.scale = clamp(s, 0.15, 8);
+  reflow();
+}
+async function reflow(){
+  if (V.aid == null) return;
+  const gen = ++V.gen;
+  await render(gen);
+  if (gen === V.gen) drawMarks();
+}
+let rt;
+addEventListener('resize', () => {
+  if (!V.fit || V.aid == null) return;
+  clearTimeout(rt); rt = setTimeout(reflow, 180);
+});
+
+document.getElementById('chunks').addEventListener('change', e =>
+  document.body.classList.toggle('show-chunks', e.target.checked));
+
+// ←/→ walk citations; PgUp/PgDn walk pages of the open document.
+addEventListener('keydown', e => {
+  if (document.activeElement === qEl || document.activeElement === keyEl
+      || document.activeElement === pgNum) return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft'){
+    if (!V.cites.length) return;
+    e.preventDefault(); stepCite(e.key === 'ArrowRight' ? 1 : -1);
+  } else if (e.key === 'PageDown' || e.key === 'PageUp'){
+    if (V.aid == null) return;
+    e.preventDefault(); show(V.aid, V.page + (e.key === 'PageDown' ? 1 : -1), -1);
+  }
+});
+
+// ------------------------------------------------------------------- chat side
+fetch('/api/docs').then(r => r.json()).then(d => {
+  const pages = d.docs.reduce((n, x) => n + x.pages, 0);
+  document.getElementById('corpus').textContent = `${d.docs.length} dok. · ${pages} stron`;
+  d.docs.forEach(x => V.titles.set(x.article_id, x.title));
+}).catch(() => {});
+
+function addMsg(cls, html){
+  const el = document.createElement('div');
+  el.className = 'msg ' + cls; el.innerHTML = html;
+  logEl.appendChild(el); logEl.scrollTop = logEl.scrollHeight;
+  return el;
+}
+
+// Same restrained topic palette as chatbot db515744. Labels accompany color.
+const CATEGORIES = {
+  warranty: {label:'Gwarancja', color:'#477063'},
+  claim: {label:'Reklamacja', color:'#9a6230'},
+  service: {label:'Serwis', color:'#426a9b'},
+  manual: {label:'Instrukcje', color:'#75609c'},
+  price: {label:'Ceny', color:'#8d617a'},
+  other: {label:'Inne', color:'#73737e'},
+  unclassified: {label:'Bez kategorii', color:null},
+};
+function applyCategory(card, classification){
+  const key = Object.hasOwn(CATEGORIES, classification?.category) ? classification.category : 'unclassified';
+  const category = CATEGORIES[key];
+  card.dataset.category = key;
+  card.classList.toggle('categorized', !!category.color);
+  card.querySelector('.category-caption')?.remove();
+  if (!category.color) return;
+  card.style.setProperty('--category-color', category.color);
+  card.style.setProperty('--category-soft', category.color + '18');
+  card.style.setProperty('--category-border', category.color + '60');
+  const caption = document.createElement('span');
+  caption.className = 'category-caption';
+  caption.textContent = category.label;
+  caption.title = 'Temat pytania';
+  card.appendChild(caption);
+}
+function answerProgress(card){
+  const progress = document.createElement('div');
+  progress.className = 'answer-progress';
+  progress.setAttribute('role', 'status');
+  progress.setAttribute('aria-live', 'polite');
+  progress.innerHTML = '<div class="progress-step active"><span class="progress-marker" aria-hidden="true">1</span><span class="progress-label">Przeszukuję dokumenty…</span></div>'
+    + '<div class="progress-step"><span class="progress-marker" aria-hidden="true">2</span><span class="progress-label">Przeczytam źródła i napiszę odpowiedź</span></div>';
+  card.prepend(progress);
+  return {
+    reading(count){
+      const rows = progress.querySelectorAll('.progress-step');
+      rows[0].className = 'progress-step done';
+      rows[0].querySelector('.progress-marker').textContent = '✓';
+      rows[0].querySelector('.progress-label').textContent = count ? `Znalazłem strony: ${count}` : 'Wyszukiwanie zakończone';
+      rows[1].className = 'progress-step active';
+      rows[1].querySelector('.progress-label').textContent = 'Czytam źródła i piszę odpowiedź…';
+    },
+    finish(){ progress.remove(); },
+  };
+}
+
+function resetSources(){
+  V.pages.clear(); V.cites = []; V.pins = []; V.active = -1; V.activeRects = [];
+  citeBtns = [];
+  V.gen++; if (V.task){ V.task.cancel(); V.task = null; }
+  V.pdf = null; V.aid = null; V.page = 0; V.total = 0;
+  pagebox.classList.add('hide'); pagebox.classList.remove('busy');
+  marksEl.textContent = ''; textLayerEl.textContent = '';
+  stage.classList.add('empty'); vemptyEl.hidden = false;
+  vemptyEl.textContent = 'Szukam strony w dokumentach…';
+  docSel.innerHTML = ''; docSel.disabled = true;
+  syncBar(); renderFoot();
+}
+
+// A retrieved page: remembered, and shown immediately if nothing is open yet —
+// watching the agent land on a page is half the diagnostic value.
+function notePage(ev){
+  V.titles.set(ev.article_id, ev.document);
+  const id = ev.article_id + ':' + ev.page;
+  if (!V.pages.has(id))
+    V.pages.set(id, { article_id: ev.article_id, page: ev.page, document: ev.document,
+                      box: ev.box || null, score: ev.score, n_chunks: ev.n_chunks });
+  syncDocList();
+  if (V.aid == null) show(ev.article_id, ev.page, -1);
+}
+
+function renderCitations(container, cites, sourceState){
+  if (!cites.length) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'cites';
+  wrap.innerHTML = '<h4>Cytaty — kliknij, aby otworzyć w PDF</h4>';
+  citeBtns = [];
+  cites.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'cite';
+    const badge = c.status === 'text-located'
+      ? `<span class="badge" title="tekst znaleziony; nie jest to weryfikacja twierdzenia">tekst</span>`
+      : c.status === 'model-region' ? '<span class="badge" title="region wskazany przez czytnik">region</span>'
+      : `<span class="badge no" title="dowód wymaga sprawdzenia">?</span>`;
+    b.innerHTML = `<span class="n">${i + 1}</span>
+      <span><q>${esc(c.quote)}</q>
+        <span class="where">— ${esc(c.supports || '')} · ${esc(V.titles.get(c.article_id) || '')} s. ${c.page}</span></span>
+      ${badge}`;
+    if (c.article_id == null || c.status === 'unsupported') {
+      b.disabled = true; b.title = 'Cytat nie wskazuje jednoznacznie załączonego źródła.';
+    } else b.addEventListener('click', () => {
+      V.pages = new Map(sourceState.pages); V.cites = cites; V.pins = sourceState.pins;
+      citeBtns = sourceState.buttons; syncDocList(); show(c.article_id, c.page, i);
+    });
+    wrap.appendChild(b);
+    citeBtns.push(b);
+  });
+  container.appendChild(wrap);
+  sourceState.buttons = [...citeBtns];
+  markActiveCiteButton();
+}
+
+// ---------------------------------------------------------- retrieval modes
+// Retrieval is where an answer goes wrong first, and it is also what the cost
+// question is really about: the reader's bill is a function of how many pages
+// retrieval handed it. So the mode is pickable, and comparable — a comparison
+// run calls no reader at all, which is why four modes cost less than one answer.
+fetch('/api/modes').then(r => r.json()).then(d => {
+  const add = (value, label, blocked) => {
+    const o = document.createElement('option');
+    o.value = value; o.textContent = label;
+    if (blocked) { o.disabled = true; o.title = blocked; }
+    modeEl.appendChild(o);
+  };
+  modeEl.innerHTML = '';
+  add('auto', `auto — ${d.default}`, null);
+  // A blocked mode stays in the list, greyed out, with the reason on hover:
+  // "TYPESAFE_API_KEY is not set" is a setup instruction, and a mode that
+  // silently disappeared is a bug report nobody can file.
+  (d.modes || []).forEach(m =>
+    add(m.mode, m.blocked ? `${m.mode} — niedostępny` : m.mode, m.blocked));
+}).catch(() => {});
+
+const fmtMs = ms => ms == null ? '—'
+  : ms >= 1000 ? (ms / 1000).toFixed(1).replace('.', ',') + ' s' : Math.round(ms) + ' ms';
+const fmtTok = n => n >= 1000 ? (n / 1000).toFixed(1).replace('.', ',') + 'k' : String(n);
+
+// Retrieval money. '$0' means this mode calls no paid API at all; tokens mean
+// it does and nobody has told us the rate (TYPESAFE_PRICE_IN/OUT) — jev.price.
+function fmtCost(s){
+  if (s && s.embedding_api_cost_unknown) return 'API · koszt niezmierzony';
+  const j = s && s.jev;
+  if (!j) return '$0';
+  if (j.cost_usd != null) return '$' + j.cost_usd.toFixed(4);
+  return fmtTok(j.input_tokens + j.output_tokens) + ' tok';
+}
+
+const pct = v => v == null ? '—' : Math.round(v * 100) + '%';
+
+function statsSummary(s){
+  if (!s) return '';
+  const bits = [`${s.pages} stron`, `${s.unique_chunks} chunków`, fmtMs(s.ms)];
+  if (s.reranker !== 'none') bits.splice(2, 0, 'rerank: ' + s.reranker);
+  if (s.answerable != null) bits.splice(1, 0, `w treści: ${pct(s.answerable)}`);
+  if (s.jev) bits.push(fmtCost(s));
+  return bits.join(' · ');
+}
+
+// Sorting always produces a rank 1, so no score can say "nothing here answers
+// it". This is the only field that does.
+function answerBadge(s){
+  if (!s || s.answerable == null) return '';
+  const v = s.answerable;
+  const label = v >= 0.7 ? 'jest w treści' : v >= 0.3 ? 'niepewne' : 'BRAK w treści';
+  return `<span class="tag${v >= 0.7 ? ' on' : ''}"`
+       + ` title="Jev: czy pobrane fragmenty zawierają odpowiedź">`
+       + `${label} ${pct(v)}</span>`;
+}
+
+// Scope sits next to answerability and never replaces it. A question the corpus
+// cannot answer scores low on both when it belongs to another domain, and low
+// on one only when the corpus is right but does not carry the fact — two
+// different things to tell a user, and one number cannot say which.
+function scopeBadge(s){
+  const v = s && s.xray && s.xray.facets ? s.xray.facets.scope : null;
+  if (v == null) return '';
+  return `<span class="tag${v >= 0.5 ? ' on' : ''}"`
+       + ` title="Jev: czy pytanie dotyczy dziedziny tych dokumentów">`
+       + `zakres ${pct(v)}</span>`;
+}
+
+const trow = (label, value) => `<tr><td>${esc(label)}</td><td>${value}</td></tr>`;
+
+// The numbers behind the summary. One function for the answer trace and for a
+// comparison row, because they are the same measurement of the same code.
+function statsDetails(s, variants){
+  if (!s) return '';
+  let html = '<table>'
+    + trow('tryb', esc(s.mode))
+    + trow('fuzja', esc(s.fusion))
+    + trow('reranker', esc(s.reranker))
+    + (s.answerable == null ? '' : trow('odpowiedź w treści',
+        `${pct(s.answerable)} <span class="dim">(Jev, niezależne od rankingu)</span>`))
+    + (s.best_score == null ? '' : trow('najlepszy chunk',
+        `${pct(s.best_score)} <span class="dim">rubryka 0-3, znormalizowana</span>`))
+    + trow('wektorowo', `${s.searches} zapytań → ${s.chunk_hits} trafień · `
+        + `${s.unique_chunks} unikalnych chunków · ${fmtMs(s.search_ms)} sumarycznie`)
+    + trow('BM25', s.lexical_calls
+        ? `${s.lexical_calls} zapytań → ${s.lexical_hits} stron · ${fmtMs(s.lexical_ms)}`
+        : '—')
+    + trow('lejek stron', `${s.candidate_pages} kandydujących → ${s.ranked_pages} `
+        + `po agregacji → ${s.pages} do czytnika`)
+    + trow('czas', `${fmtMs(s.ms)} zegara`)
+    + '</table>';
+  const j = s.jev;
+  if (j){
+    html += '<h5>jev</h5><table>'
+      + trow('model', esc(j.model))
+      + trow('warianty', j.variants.map(v => `<code>${esc(v)}</code>`).join('<br>') || '—')
+      + trow('aspekty', j.facets.map(f =>
+          `<span title="${esc(f.facet)}">${f.used ? '✓' : '·'} `
+          + `${esc(f.facet.split(' ')[0])} ${f.noul}</span>`).join('<br>') || '—')
+      + trow('kandydaci', `${j.candidates} unikalnych → ${j.scored} ocenionych`)
+      + trow('wywołania', j.calls.map(c =>
+          `${esc(c.kind)} · ${fmtMs(c.ms)} · ${c.input_tokens} in / ${c.output_tokens} out`
+        ).join('<br>') || '—')
+      + trow('razem', `${j.input_tokens} in / ${j.output_tokens} out · ${fmtCost(s)}`)
+      + trow('etapy', Object.entries(j.stages)
+          .map(([k, v]) => `${esc(k)} ${fmtMs(v)}`).join(' · ') || '—')
+      + '</table>';
+  }
+  // The X-ray block. It reports the sweep's coverage FIRST, because every
+  // other number it produces is worth less if the sweep was not exhaustive,
+  // and a sweep that lost a shard looks exactly like one that did not.
+  const x = s.xray;
+  if (x){
+    const facets = x.facets || {};
+    const noul = (label, v, hint) => v == null ? ''
+      : trow(label, `${pct(v)} <span class="dim">${esc(hint)}</span>`);
+    html += '<h5>x-ray — cały korpus, jedno wywołanie</h5><table>'
+      + trow('pokrycie', `${x.judged}/${x.pages} stron ocenionych`
+          + (x.blind ? ` · ${x.blind} bez warstwy tekstowej` : '')
+          + ` · ${x.shards} zapytanie/a`
+          + (x.exhaustive
+              ? ' <span class="tag on">wyczerpujące</span>'
+              : ` <span class="err">NIEPEŁNE — ${x.unjudged} stron bez oceny</span>`))
+      + noul('odpowiedź w korpusie', facets.answerable, 'czy gdziekolwiek jest odpowiedź')
+      + noul('zakres', facets.scope, 'czy pytanie dotyczy tej dziedziny')
+      + noul('sprzeczność', facets.premise, 'czy korpus przeczy założeniu pytania')
+      + noul('próba sterowania', facets.injection, 'czy pytanie atakuje instrukcje')
+      + (facets.kind == null ? '' : trow('rodzaj pytania',
+          `<code>${esc(facets.kind)}</code> <span class="dim">`
+          + `pewność ${pct(facets.kind_confidence)}</span>`))
+      + (facets.granularity == null ? '' : trow('zakres odpowiedzi',
+          `<code>${esc(facets.granularity)}</code> <span class="dim">`
+          + `pewność ${pct(facets.granularity_confidence)}</span>`))
+      + '</table>';
+  }
+  if (variants && variants.length){
+    html += '<h5>listy retrieverów</h5><table>';
+    variants.forEach(v => {
+      const top = (v.top || []).map(t => `s.${t.page} (${t.score})`).join(', ');
+      html += trow(`${v.retriever} · ${v.query}`,
+        `${v.pages != null ? v.pages : '?'} stron / `
+        + `${v.chunks != null ? v.chunks : '?'} chunków`
+        + `<br><span class="dim">${esc(top)}</span>`);
+    });
+    html += '</table>';
+  }
+  return html;
+}
+
+// One SSE reader for both endpoints. They stream the same frame shape, and the
+// parse loop is not the interesting part of either.
+async function sse(url, body, onMessage){
+  const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'},
+                                 body: JSON.stringify(body), signal: activeRequest?.signal });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream:true });
+    let nl;
+    while ((nl = buf.indexOf('\n\n')) >= 0) {
+      const raw = buf.slice(0, nl); buf = buf.slice(nl + 2);
+      if (raw.startsWith('data: ')) onMessage(JSON.parse(raw.slice(6)));
+    }
+  }
+}
+
+const conversation = [];
+const newChat = document.getElementById('newChat');
+newChat.addEventListener('click', () => {
+  if (sendEl.disabled) return;
+  conversation.length = 0;
+  logEl.replaceChildren();
+  resetSources();
+  qEl.focus();
+});
+// ------------------------------------------------------------------ one ask
+async function ask(question, retrieval, referenceImage = queryImage){
+  resetSources();
+  const answerSources = {pages: new Map(), cites: [], pins: [], buttons: []};
+  const bot = addMsg('bot',
+    `<div class="trace"></div><div class="body"></div>`);
+  newChat.disabled = true;
+  const progress = answerProgress(bot);
+  const traceEl = bot.querySelector('.trace');
+  const bodyEl = bot.querySelector('.body');
+
+  function step(icon, html, target){
+    const row = document.createElement('div');
+    row.className = 'step' + (target ? ' viewed' : '');
+    row.innerHTML = `<span class="ic">${icon}</span><span>${html}</span>`;
+    if (target) row.addEventListener('click', () => {
+      V.pages = new Map(answerSources.pages); V.cites = answerSources.cites; V.pins = answerSources.pins;
+      citeBtns = answerSources.buttons; syncDocList(); show(target[0], target[1], -1);
+    });
+    traceEl.appendChild(row);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  let streaming = false, streamBuf = '';
+  try {
+    await sse('/api/ask',
+      { question, query_image: referenceImage, api_key: keyEl.value.trim() || null, retrieval: retrieval || null },
+      ({ kind, payload }) => {
+        if (kind === 'event') {
+          if (payload.type === 'context') {
+            if (payload.contextual) step('↳', `pytanie w kontekście: <code>${esc(payload.question)}</code>`);
+          } else if (payload.type === 'classification') {
+            applyCategory(bot, payload);
+          } else if (payload.type === 'search') {
+            progress.reading(payload.hits?.length || 0);
+            const vs = (payload.variants || []).map(v => esc(v.query)).join(' · ');
+            const s = payload.stats;
+            step('⌕', `szukano: <code>${vs || esc(payload.query)}</code> — `
+                 + (s ? `<span class="dim">${esc(statsSummary(s))}</span>`
+                      : `${payload.hits.length} stron`));
+            if (s) {
+              const d = document.createElement('details');
+              d.className = 'det';
+              d.innerHTML = '<summary>szczegóły wyszukiwania</summary>'
+                            + statsDetails(s, payload.variants);
+              traceEl.appendChild(d);
+              // A degraded stage is a trace line, not a footnote: it is the
+              // difference between "Jev ranked this" and "Jev was billed and
+              // the original ranking stands".
+              (s.notes || []).forEach(n => step('!', `<span class="note">${esc(n)}</span>`));
+            }
+          } else if (payload.type === 'tile') {
+            notePage(payload);
+            answerSources.pages = new Map(V.pages);
+            step('▣', `<code>${esc(payload.document)} s.${payload.page}</code>`,
+                 [payload.article_id, payload.page]);
+          } else if (payload.type === 'zoom') {
+            step('⌕', `dokładny odczyt regionu · s.${payload.page}`, [payload.article_id, payload.page]);
+            const meta = V.pages.get(payload.article_id + ':' + payload.page);
+            if (meta) meta.box = payload.rect;
+            drawMarks();
+          } else if (payload.type === 'zoom_error') {
+            step('!', 'Nie udało się wskazać regionu do powiększenia.');
+          } else if (payload.type === 'answer_reset') {
+            streamBuf = ''; bodyEl.textContent = ''; streaming = false;
+          } else if (payload.type === 'answerable') {
+            const v = payload.value;
+            const word = v >= 0.7 ? 'jest' : v >= 0.3 ? 'niepewne' : 'BRAK';
+            // Scope is reported next to answerability rather than folded into
+            // it: low/low and low/HIGH are different failures and the pair is
+            // the diagnosis. See jev.Gate.
+            const sc = payload.scope == null ? ''
+              : ` · zakres korpusu <b>${pct(payload.scope)}</b>`;
+            step(v >= 0.3 ? '?' : '!',
+                 `eksperymentalna ocena warstwy tekstowej: <b>${word} ${pct(v)}</b>${sc} `
+                 + `<span class="dim">· ${payload.pages} stron · ${fmtMs(payload.ms)}</span>`);
+          } else if (payload.type === 'refused') {
+            const why = payload.verdict === 'out-of-scope'
+              ? `pytanie dotyczy innej dziedziny niż korpus `
+                + `(zakres ${pct(payload.scope)})`
+              : `odpowiedzi nie ma w pobranych stronach `
+                + `(${pct(payload.answerable)})`;
+            step('!', `<span class="note">Jev: ${why} — pominięto czytnik</span>`);
+          } else if (payload.type === 'tile_error') {
+            step('!', `<span class="err">brak regionu ${payload.tile_index}:${payload.chunk_index}</span>`);
+          } else if (payload.type === 'answer_delta') {
+            progress.finish();
+            // Render as it arrives. The ---CYTATY--- block is stripped server
+            // side and only exists in the final payload, so mdToHtml runs over
+            // the accumulated raw text and gets replaced wholesale on 'done'.
+            if (!streaming) { streaming = true; streamBuf = ''; bodyEl.classList.remove('meta'); }
+            streamBuf += payload.text;
+            bodyEl.innerHTML = mdToHtml(streamBuf.split('---CYTATY---')[0]);
+            logEl.scrollTop = logEl.scrollHeight;
+          }
+        } else if (kind === 'done') {
+          progress.finish();
+          conversation.push({role:'user', text:payload.resolved_question || question},
+                            {role:'assistant', text:payload.answer.slice(0,12000)});
+          if (payload.classification) applyCategory(bot, payload.classification);
+          bodyEl.classList.remove('meta');
+          bodyEl.innerHTML = mdToHtml(payload.answer);
+          V.cites = payload.citations || [];
+          V.pins = payload.pins || [];
+          V.cites.filter(c => c.article_id != null).forEach(c => V.titles.set(c.article_id, c.document || V.titles.get(c.article_id)));
+          syncDocList();
+          Object.assign(answerSources, {pages: new Map(V.pages), cites: V.cites, pins: [...V.pins]});
+          renderCitations(bot, V.cites, answerSources);
+          // Open the document at the first thing the answer actually cited.
+          const first = V.cites.findIndex(c => c.article_id != null && c.status !== 'unsupported');
+          if (first >= 0) show(V.cites[first].article_id, V.cites[first].page, first);
+          else if (V.aid != null) drawMarks();
+          else vemptyEl.textContent = 'Ta odpowiedź nie wskazuje strony źródłowej.';
+          const u = payload.usage || {};
+          const t = payload.timings || {};
+          const cost = u.cost_usd != null ? ` · ~$${u.cost_usd.toFixed(3)}` : '';
+          const cacheTok = u.cache_read ? ` · ${u.cache_read} cache-read` : '';
+          const hit = payload.cached ? ' · z pamięci podręcznej' : '';
+          // Split, not summed: retrieval is the part the mode changes, and the
+          // first token is the part anyone actually feels.
+          const speed = [
+            t.retrieval_ms != null ? `wyszukiwanie ${fmtMs(t.retrieval_ms)}` : null,
+            t.gate_ms != null ? `bramka ${fmtMs(t.gate_ms)}` : null,
+            t.ttft_ms != null ? `1. token ${fmtMs(t.ttft_ms)}` : null,
+            t.total_ms != null ? `razem ${fmtMs(t.total_ms)}` : null,
+          ].filter(Boolean).join(' · ');
+          const m = document.createElement('div');
+          m.className = 'meta';
+          m.textContent = `${payload.provider}/${payload.model} · ${payload.retrieval || 'auto'}`
+            + ` · ${u.input || 0} in / ${u.output || 0} out${cacheTok}${cost}${hit}`
+            + (speed ? ` · ${speed}` : '');
+          bot.appendChild(m);
+        } else if (kind === 'error') {
+          progress.finish();
+          bot.classList.add('failed');
+          bodyEl.classList.remove('meta');
+          bodyEl.innerHTML = `<span class="err">${esc(payload)}</span>`;
+        }
+      });
+  } catch (err) {
+    progress.finish();
+    bot.classList.add('failed');
+    bodyEl.classList.remove('meta');
+    bodyEl.innerHTML = `<span class="err">${err.name === 'AbortError' ? 'Przerwano.' : esc(err.message || err)}</span>`;
+  }
+  progress.finish();
+  newChat.disabled = false;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// -------------------------------------------------------------- comparison
+async function runCompare(question){
+  const referenceImage = queryImage;
+  const bot = addMsg('bot',
+    `<div class="cmp"></div><div class="body meta"><span class="spin"></span> porównuję tryby…</div>`);
+  const wrap = bot.querySelector('.cmp');
+  const foot = bot.querySelector('.body');
+  const rows = [];
+  try {
+    await sse('/api/compare', { question, query_image: referenceImage }, ({ kind, payload }) => {
+      if (kind === 'row') { payload.referenceImage = referenceImage; rows.push(payload); drawCompare(wrap, rows, null, question); }
+      else if (kind === 'done') {
+        drawCompare(wrap, rows, payload.agreement, question);
+        const ok = rows.filter(r => r.ok);
+        const ms = ok.reduce((n, r) => n + (r.stats.ms || 0), 0);
+        const tok = ok.reduce((n, r) => n + (r.stats.jev
+          ? r.stats.jev.input_tokens + r.stats.jev.output_tokens : 0), 0);
+        const usd = ok.reduce((n, r) => n + ((r.stats.jev && r.stats.jev.cost_usd) || 0), 0);
+        const embeddingApi = ok.some(r => r.stats.embedding_api_cost_unknown);
+        foot.textContent = `${ok.length}/${rows.length} trybów · ${fmtMs(ms)} łącznie · `
+          + (embeddingApi ? 'Gemini embedding API · koszt niezmierzony' : tok ? `${fmtTok(tok)} tokenów Jev` : 'bez płatnych wywołań')
+          + (usd ? ` · ~$${usd.toFixed(4)}` : '')
+          + ' · bez czytnika odpowiedzi';
+      } else if (kind === 'error') {
+        foot.innerHTML = `<span class="err">${esc(payload)}</span>`;
+      }
+    });
+  } catch (err) {
+    foot.innerHTML = `<span class="err">${esc(err.message || err)}</span>`;
+  }
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function drawCompare(wrap, rows, agree, question){
+  // How many modes returned each page. Redrawing every card as each row lands
+  // is four innerHTMLs, and it keeps that count honest while they arrive.
+  const seen = {};
+  rows.forEach(r => r.pages.forEach(p => {
+    const k = p.article_id + ':' + p.page;
+    seen[k] = (seen[k] || 0) + 1;
+  }));
+  wrap.innerHTML = '';
+  rows.forEach(r => wrap.appendChild(modeCard(r, seen, rows.length, question)));
+  if (agree && agree.length) wrap.appendChild(agreeCard(agree, rows));
+}
+
+function modeCard(r, seen, total, question){
+  const el = document.createElement('div');
+  el.className = 'mode' + (r.ok ? '' : ' bad');
+  if (!r.ok){
+    el.innerHTML = `<div class="hd"><span class="nm">${esc(r.mode)}</span>
+      <span class="tag">nie uruchomiono</span></div>
+      <div class="note">${esc(r.error)}</div>`;
+    return el;
+  }
+  const s = r.stats;
+  const fact = (v, label) => `<div class="fact"><b>${esc(String(v))}</b><span>${label}</span></div>`;
+  el.innerHTML = `<div class="hd">
+      <span class="nm">${esc(r.mode)}</span>
+      <span class="tag${s.reranker !== 'none' ? ' on' : ''}">rerank: ${esc(s.reranker)}</span>
+      ${answerBadge(s)}
+      ${scopeBadge(s)}
+      <span class="ms">${fmtMs(s.ms)}</span>
+    </div>
+    <div class="facts">
+      ${fact(s.xray ? `${s.xray.judged}/${s.xray.pages}` : s.pages,
+             s.xray ? 'ocenionych stron' : 'stron')}
+      ${fact(s.unique_chunks, 'chunków')}
+      ${fact(s.candidate_pages, 'kandydatów')}
+      ${fact(s.searches + (s.lexical_calls ? '+' + s.lexical_calls : ''), 'zapytań')}
+      ${fact(fmtCost(s), 'koszt')}
+    </div>`;
+
+  const chips = document.createElement('div');
+  chips.className = 'pgs';
+  r.pages.forEach(p => {
+    const solo = total > 1 && seen[p.article_id + ':' + p.page] === 1;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pg-chip' + (solo ? ' solo' : '');
+    b.textContent = 's.' + p.page;
+    b.title = `${p.document} — ${p.found_by}, ranking ${p.score}, `
+            + `${p.n_chunks} chunków${solo ? ' · tylko ten tryb' : ''}`;
+    b.addEventListener('click', () => {
+      V.cites = []; V.pins = []; V.pages = new Map(r.pages.map(page => [page.article_id + ':' + page.page, page]));
+      V.titles.set(p.article_id, p.document); syncDocList(); show(p.article_id, p.page, -1);
+    });
+    chips.appendChild(b);
+    if (p.box) {
+      const crop = document.createElement('details');
+      const rects = encodeURIComponent(JSON.stringify([p.box]));
+      crop.innerHTML = `<summary>region · s.${p.page}</summary><img alt="Dopasowany region strony ${p.page}" loading="lazy" style="max-width:100%;max-height:250px" src="/api/snip/${p.article_id}/${p.page}?rects=${rects}">`;
+      chips.appendChild(crop);
+    }
+  });
+  el.appendChild(chips);
+
+  (s.notes || []).forEach(n => {
+    const d = document.createElement('div');
+    d.className = 'note'; d.textContent = '! ' + n;
+    el.appendChild(d);
+  });
+
+  const det = document.createElement('details');
+  det.className = 'det';
+  det.innerHTML = '<summary>szczegóły</summary>' + statsDetails(s, r.variants);
+  el.appendChild(det);
+
+  const go = document.createElement('button');
+  go.type = 'button'; go.className = 'mini';
+  go.textContent = 'odpowiedz tym trybem';
+  go.addEventListener('click', async () => {
+    go.disabled = true; sendEl.disabled = true;
+    activeRequest = new AbortController(); cancelAsk.hidden = false;
+    try { await ask(question, r.mode, r.referenceImage); }
+    finally { sendEl.disabled = false; go.disabled = false; cancelAsk.hidden = true; activeRequest = null; qEl.focus(); }
+  });
+  el.appendChild(go);
+  return el;
+}
+
+// Where the modes agreed and where exactly one went its own way. That is the
+// reason to run a comparison at all, and it is the thing four lists of page
+// numbers side by side make you work out by eye.
+function agreeCard(agree, rows){
+  const total = rows.filter(r => r.ok).length;
+  const el = document.createElement('div');
+  el.className = 'mode';
+  const body = agree.map(a =>
+    `<tr><td>${a.modes.length === total
+        ? '<span class="tag on">wszystkie</span>'
+        : `<span class="tag">${a.modes.length}/${total}</span>`}</td>`
+    + `<td><b>s.${a.page}</b> <span class="dim">${esc(V.titles.get(a.article_id) || '')}</span>`
+    + `<br><span class="dim">${esc(a.modes.join(', '))}</span></td></tr>`).join('');
+  el.innerHTML = `<div class="hd"><span class="nm">zgodność</span>
+      <span class="ms">${agree.length} stron łącznie</span></div>
+    <div class="det"><table>${body}</table></div>`;
+  return el;
+}
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const question = qEl.value.trim() || (queryImage ? 'Znajdź ten element w dokumentacji i opisz go na podstawie źródeł.' : ''); if (!question) return;
+  qEl.value = ''; sendEl.disabled = true;
+  activeRequest = new AbortController(); cancelAsk.hidden = false;
+  addMsg('user', esc(question) + (queryImage ? `<br><img src="${queryImage}" alt="Obraz referencyjny" style="max-width:180px;max-height:120px">` : ''));
+  try {
+    if (cmpEl.checked) await runCompare(question);
+    else await ask(question, modeEl.value);
+  } finally {
+    sendEl.disabled = false; cancelAsk.hidden = true; activeRequest = null; qEl.focus();
+  }
+});
+
+// The button says what pressing it will do: a comparison does not answer.
+cmpEl.addEventListener('change', () => {
+  sendEl.textContent = cmpEl.checked ? 'Porównaj' : 'Zapytaj';
+  modeEl.disabled = cmpEl.checked;
+});
+
+qEl.focus();
+</script>
+</body>
+</html>

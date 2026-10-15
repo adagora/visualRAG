@@ -1,0 +1,2106 @@
+{
+  "schema_version": 1,
+  "review_status": "agent_inspected_draft",
+  "label_provenance": "Questions authored independently from direct source PDF text and page-image inspection, without Jev or retrieval rankings. No independent human review has occurred.",
+  "split_policy": "Single available source document; held out page/product families. Document-held-out evaluation cannot be claimed.",
+  "outstanding_review": [
+    "Independent human review of every question, exact value, unit, gold completeness and absence labels",
+    "Pixel audit of UniTherm/PRIME text-inspected table alignment",
+    "Additional documents for document-held-out external evaluation",
+    "Separate indexes and remapped gold for scan fixture"
+  ],
+  "sources": [
+    {
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "path": "corpora/px1/4423_PRICELIST_DOC-PRICE-1_20260414_CennikBramyGarazowe.pdf",
+      "sha256": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "page_count": 236
+    }
+  ],
+  "questions": [
+    {
+      "id": "vg-001",
+      "q": "Jaka jest grubość panelu UniPro?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-spec",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 8,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "40 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 40,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-002",
+      "q": "Na ile cykli zaprojektowano sprężyny UniPro?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-spec",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 8,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "25000 cykli",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 25000,
+            "unit": "cykli"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-003",
+      "q": "Jaki jest współczynnik Up panelu UniPro?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-spec",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 8,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "0,48 W/m2K",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 0.48,
+            "unit": "W/m2K"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-004",
+      "q": "Jakie wymiary w świetle mają kratki K-1 pokazane na rysunku 52?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 17,
+          "rectangles": [
+            [
+              0.06,
+              0.16,
+              0.25,
+              0.29
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "426 x 89 mm",
+        "facts": [
+          {
+            "kind": "dimensions",
+            "values": [
+              426,
+              89
+            ],
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of figure 52; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-005",
+      "q": "Ile kratek w jednym panelu wolno zastosować przy So=3500 mm w bramie UniPro z drzwiami przejściowymi?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 17,
+          "rectangles": [
+            [
+              0.06,
+              0.6,
+              0.49,
+              0.7
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "2 kratki",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 2,
+            "unit": "kratki"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of table 13; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-006",
+      "q": "Ile kratek w jednym panelu dopuszczono przy So=3500 mm w bramie UniPro bez drzwi przejściowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 17,
+          "rectangles": [
+            [
+              0.06,
+              0.71,
+              0.49,
+              0.8
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "4 kratki",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 4,
+            "unit": "kratki"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of table 14; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-007",
+      "q": "Jaki przepływ powietrza podano dla K-1?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 17,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "464 m3/h",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 464,
+            "unit": "m3/h"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-008",
+      "q": "Jaki przepływ powietrza podano dla K-2?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 17,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "746 m3/h",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 746,
+            "unit": "m3/h"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-009",
+      "q": "Jaki przepływ podano dla K-3 w pozycji otwartej?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 17,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "159 m3/h",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 159,
+            "unit": "m3/h"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-010",
+      "q": "W którym panelu od dołu pokazano kratki K-1 na rysunku 53 bramy UniPro?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 17,
+          "rectangles": [
+            [
+              0.24,
+              0.16,
+              0.45,
+              0.29
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "W pierwszym panelu od dołu",
+        "facts": [
+          {
+            "kind": "entity",
+            "value": "pierwszym",
+            "aliases": [
+              "pierwszy",
+              "1."
+            ]
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of figure 53; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-011",
+      "q": "Ile uchwytów zawiera zestaw uchyłu górnego panelu dla S=4600 mm?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-ventilation",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 17,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "4 szt.",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 4,
+            "unit": "szt."
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-012",
+      "q": "Jaka jest maksymalna wysokość niskiego progu wraz z uszczelką w drzwiach przejściowych UniPro?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-wicket",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 19,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "19 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 19,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-013",
+      "q": "Jaki limit So obowiązuje dla drzwi przejściowych z niskim progiem UniPro?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-wicket",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 19,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "5500 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 5500,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-014",
+      "q": "Jaka klamka jest standardem w drzwiach przejściowych UniPro?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-wicket",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 19,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "K-K Jupiter w kolorze srebrnym",
+        "facts": [
+          {
+            "kind": "entity",
+            "value": "Jupiter",
+            "aliases": []
+          },
+          {
+            "kind": "entity",
+            "value": "srebrnym",
+            "aliases": [
+              "srebrny"
+            ]
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-015",
+      "q": "Co oznacza detal numer 1 na rysunku UniPro SNP 2.0?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 22,
+          "rectangles": [
+            [
+              0.51,
+              0.29,
+              0.75,
+              0.42
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "Boczna uszczelka i maskownica ościeżnicy w kolorze bramy",
+        "facts": [
+          {
+            "kind": "entity",
+            "value": "uszczelka",
+            "aliases": []
+          },
+          {
+            "kind": "entity",
+            "value": "maskownica",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of numbered detail 1; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-016",
+      "q": "Co oznacza detal numer 2 na rysunku UniPro SNP 2.0?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 22,
+          "rectangles": [
+            [
+              0.75,
+              0.29,
+              0.94,
+              0.42
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "Prowadnice skręcane z ościeżnicą",
+        "facts": [
+          {
+            "kind": "entity",
+            "value": "prowadnice",
+            "aliases": []
+          },
+          {
+            "kind": "entity",
+            "value": "skręcane",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of numbered detail 2; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-017",
+      "q": "Co oznacza detal numer 4 na rysunku UniPro SNP 2.0?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 22,
+          "rectangles": [
+            [
+              0.75,
+              0.42,
+              0.94,
+              0.54
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "Podwójne otwory montażowe",
+        "facts": [
+          {
+            "kind": "entity",
+            "value": "podwójne",
+            "aliases": []
+          },
+          {
+            "kind": "entity",
+            "value": "otwory montażowe",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of numbered detail 4; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-018",
+      "q": "Na jakiej wysokości od podstawy ościeżnicy znajduje się znacznik SNP 2.0?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 22,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "950 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 950,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-019",
+      "q": "Jaką minimalną przestrzeń boczną po każdej stronie pokazuje przekrój SNP 2.0 Wersja 1?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 22,
+          "rectangles": [
+            [
+              0.06,
+              0.59,
+              0.28,
+              0.75
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "100 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 100,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of Wersja 1 horizontal section; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-020",
+      "q": "Jakie minimalne nadproże dla napędu SPARK wskazuje pionowy przekrój SNP 2.0 Wersja 1?",
+      "type": "diagram",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 22,
+          "rectangles": [
+            [
+              0.28,
+              0.59,
+              0.49,
+              0.77
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "120 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 120,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of Wersja 1 SNP 2.0 with footnote 2 SPARK; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-021",
+      "q": "Z jakiej grubości stali wykonano ościeżnice SNP 2.0 i SSt 2.0?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "dev",
+      "page_family": "unipro-mount-2",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 22,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "2 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 2,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-022",
+      "q": "Ile wynosi cena netto w PLN bramy UniPro ręczna, woodgrain RAL 9016, So=3000 mm i Ho=2000 mm według tabeli wymiarów typowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-price-white-woodgrain",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 36,
+          "rectangles": [
+            [
+              0.06,
+              0.15,
+              0.94,
+              0.27
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "4349 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 4349,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact price row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-023",
+      "q": "Ile wynosi cena netto w PLN bramy UniPro automatyczna MOTO, woodgrain RAL 9016, So=3000 mm i Ho=2000 mm według tabeli wymiarów typowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-price-white-woodgrain",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 36,
+          "rectangles": [
+            [
+              0.06,
+              0.27,
+              0.94,
+              0.4
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "5433 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 5433,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact price row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-024",
+      "q": "Ile wynosi cena netto w PLN bramy UniPro automatyczna METRO, woodgrain RAL 9016, So=3000 mm i Ho=2000 mm według tabeli wymiarów typowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-price-white-woodgrain",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 36,
+          "rectangles": [
+            [
+              0.06,
+              0.4,
+              0.94,
+              0.52
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "6014 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 6014,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact price row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-025",
+      "q": "Ile wynosi cena netto w PLN bramy UniPro automatyczna SPARK, woodgrain RAL 9016, So=3000 mm i Ho=2000 mm według tabeli wymiarów typowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-price-white-woodgrain",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 36,
+          "rectangles": [
+            [
+              0.06,
+              0.52,
+              0.94,
+              0.64
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "5372 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 5372,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact price row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-026",
+      "q": "Ile wynosi cena netto w PLN bramy UniPro ręczna, woodgrain RAL 9016, So=5500 mm i Ho=2500 mm według tabeli wymiarów typowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-price-white-woodgrain",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 36,
+          "rectangles": [
+            [
+              0.06,
+              0.15,
+              0.94,
+              0.27
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "8061 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 8061,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact price row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null,
+        "secondary_review": {
+          "reviewer": "Codex root",
+          "method": "Direct page-image inspection of source page 36; corrected width from 6000 to 5500. The 6000/2500 cell is blank.",
+          "status": "agent_verified"
+        }
+      }
+    },
+    {
+      "id": "vg-027",
+      "q": "Ile wynosi cena netto w PLN bramy UniPro automatyczna METRO, woodgrain RAL 9016, So=5500 mm i Ho=2500 mm według tabeli wymiarów typowych?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "dev",
+      "page_family": "unipro-price-white-woodgrain",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 36,
+          "rectangles": [
+            [
+              0.06,
+              0.4,
+              0.94,
+              0.52
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "10010 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 10010,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact price row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null,
+        "secondary_review": {
+          "reviewer": "Codex root",
+          "method": "Direct page-image inspection of source page 36; corrected width from 6000 to 5500. The 6000/2500 cell is blank.",
+          "status": "agent_verified"
+        }
+      }
+    },
+    {
+      "id": "vg-028",
+      "q": "Jaka jest gęstość materiału PET ciepłego progu Y3100?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "test",
+      "page_family": "unitherm-threshold",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 71,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "115 kg/m3",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 115,
+            "unit": "kg/m3"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-029",
+      "q": "Ile elementów progowych jest w zestawie Y3100 dla So=4000 mm?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "test",
+      "page_family": "unitherm-threshold",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 71,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.51,
+              0.4
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "4 progi",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 4,
+            "unit": "progi"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "PDF text table manually inspected; pixel alignment audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-030",
+      "q": "O ile pomniejszyć Ho zamawianej bramy po zastosowaniu ciepłego progu?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "test",
+      "page_family": "unitherm-threshold",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 71,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "5 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 5,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-031",
+      "q": "Jaki jest wymiar pojedynczego elementu ciepłego progu Y3100?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "test",
+      "page_family": "unitherm-threshold",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 71,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "1190 x 220 x 100 mm",
+        "facts": [
+          {
+            "kind": "dimensions",
+            "values": [
+              1190,
+              220,
+              100
+            ],
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-032",
+      "q": "Jakiej klasy odporności na włamanie jest opcjonalna wkładka antywłamaniowa UniTherm?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "test",
+      "page_family": "unitherm-threshold",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 71,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "Klasa C",
+        "facts": [
+          {
+            "kind": "entity",
+            "value": "C"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-033",
+      "q": "Jaką grubość ma panel INNOVO bramy PRIME?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "test",
+      "page_family": "prime-spec",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 88,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "60 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 60,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-034",
+      "q": "Jaki współczynnik Up ma panel bramy PRIME?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "test",
+      "page_family": "prime-spec",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 88,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "0,33 W/m2K",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 0.33,
+            "unit": "W/m2K"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-035",
+      "q": "Ile maksymalnie nadajników PULSAR io można zaprogramować w METRO Smart io?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "test",
+      "page_family": "prime-metro",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 96,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "9 nadajników",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 9,
+            "unit": "nadajników"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-036",
+      "q": "Który wariant METRO Smart io dobiera się do bramy o powierzchni 10 m2?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "test",
+      "page_family": "prime-metro",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 96,
+          "rectangles": [
+            [
+              0.05,
+              0.2,
+              0.94,
+              0.6
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "METRO 1000 Smart io",
+        "facts": [
+          {
+            "kind": "entity",
+            "value": "METRO 1000 Smart io",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "PDF text table manually inspected; pixel alignment audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-037",
+      "q": "Jaka dopłata netto w PLN za sztukę TaHoma switch figuruje w opcjach METRO Smart io dla PRIME?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "test",
+      "page_family": "prime-metro",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 96,
+          "rectangles": [
+            [
+              0.05,
+              0.3,
+              0.94,
+              0.85
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "649 PLN netto za sztukę",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 649,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "PDF text table manually inspected; pixel alignment audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-038",
+      "q": "Jaka dopłata netto w PLN za sztukę KEYPAD 2 io figuruje w opcjach METRO Smart io dla PRIME?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "test",
+      "page_family": "prime-metro",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 96,
+          "rectangles": [
+            [
+              0.05,
+              0.3,
+              0.94,
+              0.85
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "469 PLN netto za sztukę",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 469,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "PDF text table manually inspected; pixel alignment audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-039",
+      "q": "Ile nadajników obsługuje odbiornik radiowy io z rozdziału automatyki bram roletowych?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "test",
+      "page_family": "roller-controls",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 139,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "32 nadajniki",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 32,
+            "unit": "nadajniki"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-040",
+      "q": "Ile nadajników DART obsługuje odbiornik WIŚNIOWSKI 868 MHz?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "test",
+      "page_family": "roller-controls",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 139,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "40 nadajników",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 40,
+            "unit": "nadajników"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-041",
+      "q": "Jaki maksymalny zasięg ma dwukanałowy nadajnik naścienny 2CH?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "test",
+      "page_family": "roller-controls",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 139,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "40 metrów",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 40,
+            "unit": "metrów"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-042",
+      "q": "Jaka jest cena netto w PLN drzwi DoorLight 45 D1B77, S=1100 mm i H=2200 mm?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "test",
+      "page_family": "doorlight-price",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 231,
+          "rectangles": [
+            [
+              0.06,
+              0.21,
+              0.94,
+              0.32
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "3956 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 3956,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact model, row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-043",
+      "q": "Jaka jest cena netto w PLN drzwi DoorLight 45 D1B100, S=1100 mm i H=2200 mm?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "test",
+      "page_family": "doorlight-price",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 231,
+          "rectangles": [
+            [
+              0.06,
+              0.33,
+              0.94,
+              0.48
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "4136 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 4136,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact model, row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-044",
+      "q": "Jaka jest cena netto w PLN drzwi DoorLight 45 D2B77, S=2000 mm i H=2400 mm?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "test",
+      "page_family": "doorlight-price",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 231,
+          "rectangles": [
+            [
+              0.06,
+              0.64,
+              0.94,
+              0.77
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "7452 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 7452,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact model, row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-045",
+      "q": "Jaka jest cena netto w PLN drzwi DoorLight 45 D2B100, S=2000 mm i H=2400 mm?",
+      "type": "table_intersection",
+      "visual_dependency": "required",
+      "split": "test",
+      "page_family": "doorlight-price",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 231,
+          "rectangles": [
+            [
+              0.06,
+              0.77,
+              0.94,
+              0.9
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "7950 PLN netto",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 7950,
+            "unit": "PLN"
+          },
+          {
+            "kind": "entity",
+            "value": "netto",
+            "aliases": []
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct page-image inspection of exact model, row/column intersection and VAT footer; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-046",
+      "q": "Porównaj maksymalną liczbę nadajników dla METRO Smart io w PRIME oraz odbiornika radiowego io bram roletowych.",
+      "type": "multi_page",
+      "visual_dependency": "supportive",
+      "split": "test",
+      "page_family": "prime-metro",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 96,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        },
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 139,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "METRO Smart io: 9 nadajników; odbiornik radiowy io: 32 nadajniki.",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 9,
+            "unit": "nadajników"
+          },
+          {
+            "kind": "number",
+            "value": 32,
+            "unit": "nadajniki"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-047",
+      "q": "Jaka jest cena bramy UniPro z napędem Tesla HomeDrive w tym cenniku?",
+      "type": "negative",
+      "visual_dependency": "none",
+      "split": "test",
+      "page_family": "absent-products",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": false,
+      "gold": [],
+      "expected_answer": {
+        "text": "Brak tej informacji w korpusie; odmów podania ceny.",
+        "facts": [],
+        "abstain": true
+      },
+      "review": {
+        "status": "draft_negative",
+        "method": "Plausible negative; corpus-wide absence needs independent human audit",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-048",
+      "q": "Jaką cenę rocznego abonamentu serwisowego podano dla TaHoma switch?",
+      "type": "negative",
+      "visual_dependency": "none",
+      "split": "test",
+      "page_family": "absent-products",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": false,
+      "gold": [],
+      "expected_answer": {
+        "text": "Brak tej informacji w korpusie; odmów podania ceny.",
+        "facts": [],
+        "abstain": true
+      },
+      "review": {
+        "status": "draft_negative",
+        "method": "Plausible negative; corpus-wide absence needs independent human audit",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-049",
+      "q": "Czy UniTherm z pakietem RC2 wymaga osobnego wejścia do garażu?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "test",
+      "page_family": "unitherm-threshold",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 71,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "Tak, konieczne jest osobne wejście do garażu.",
+        "facts": [
+          {
+            "kind": "entity",
+            "value": "osobne wejście",
+            "aliases": [
+              "osobnego wejścia"
+            ]
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    },
+    {
+      "id": "vg-050",
+      "q": "O ile maksymalnie dodatkowo zmniejsza się światło wjazdu UniTherm z pakietem RC2?",
+      "type": "prose",
+      "visual_dependency": "supportive",
+      "split": "test",
+      "page_family": "unitherm-threshold",
+      "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+      "answerable": true,
+      "gold": [
+        {
+          "source_id": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+          "page": 71,
+          "rectangles": [
+            [
+              0.05,
+              0.06,
+              0.94,
+              0.94
+            ]
+          ]
+        }
+      ],
+      "expected_answer": {
+        "text": "50 mm",
+        "facts": [
+          {
+            "kind": "number",
+            "value": 50,
+            "unit": "mm"
+          }
+        ]
+      },
+      "review": {
+        "status": "agent_inspected",
+        "method": "Direct PDF text inspection; human audit pending",
+        "reviewer": "Codex implement_eval",
+        "human_reviewer": null
+      }
+    }
+  ]
+}

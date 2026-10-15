@@ -1,6 +1,7 @@
 .DS_Store
 .env
 .venv/
+.venv-*/
 .venv_encoder/
 *.pyc
 __pycache__/
@@ -43,3 +44,13 @@ undefined/
 .opencode/
 .claude/
 .agents/
+
+# project_x evaluation corpora (hardlinks to project_x/data) and their indexes
+corpora/
+index-px*/
+index-echo*/
+index/snapshots/
+index/active.json
+eval/results/
+dist/
+build/

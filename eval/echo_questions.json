@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "review_status": "agent_inspected_draft",
+  "purpose": "Small public, image-heavy corpus for a matched whole-page encoder comparison. Questions authored from source inspection before retrieval rankings were inspected.",
+  "sources": [
+    {
+      "source_id": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41",
+      "path": "corpora/echo/k75-pl-ECHO-wisniowski.pdf",
+      "url": "https://www.wisniowski.pl/images/foldery-online/pl/k75-pl-ECHO-wisniowski/docs/k75-pl-ECHO-wisniowski.pdf",
+      "sha256": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41",
+      "page_count": 27
+    }
+  ],
+  "questions": [
+    {
+      "id": "echo-01", "q": "Jakie wymiary przekroju ma słup konstrukcyjny pergoli ECHO pokazany na rysunku?",
+      "type": "diagram", "visual_dependency": "required", "split": "test", "page_family": "profiles",
+      "source_id": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41", "answerable": true,
+      "gold": [{"page": 4, "rectangles": [[0.04, 0.15, 0.44, 0.46]]}],
+      "expected_answer": {"text": "120 x 120 mm", "facts": [{"kind": "dimensions", "values": [120, 120], "unit": "mm"}]},
+      "review": {"status": "agent_inspected", "method": "Direct source-image inspection of the post cross-section and both dimension arrows", "human_reviewer": null}
+    },
+    {
+      "id": "echo-02", "q": "Jaką wysokość ma osobny profil podwyższenia korony pergoli ECHO?",
+      "type": "diagram", "visual_dependency": "required", "split": "test", "page_family": "profiles",
+      "source_id": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41", "answerable": true,
+      "gold": [{"page": 4, "rectangles": [[0.58, 0.49, 0.88, 0.74]]}],
+      "expected_answer": {"text": "80 mm", "facts": [{"kind": "number", "value": 80, "unit": "mm"}]},
+      "review": {"status": "agent_inspected", "method": "Direct source-image inspection of the separate crown-extension profile", "human_reviewer": null}
+    },
+    {
+      "id": "echo-03", "q": "Który typ korony ECHO ma na przekroju jednocześnie podwyższenie o 80 mm i wysunięty o 84 mm profil boczny?",
+      "type": "diagram", "visual_dependency": "required", "split": "test", "page_family": "crown-types",
+      "source_id": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41", "answerable": true,
+      "gold": [{"page": 5, "rectangles": [[0.64, 0.40, 0.96, 0.95]]}],
+      "expected_answer": {"text": "Typ 3: poszerzenie i podwyższenie korony konstrukcji.", "facts": [{"kind": "entity", "value": "typ 3", "aliases": ["typ trzeci"]}]},
+      "review": {"status": "agent_inspected", "method": "Direct source-image comparison of all three crown sections", "human_reviewer": null}
+    },
+    {
+      "id": "echo-04", "q": "Na schemacie lameli ECHO z żółtym słońcem po której stronie znajduje się MOTOR przy otwieraniu do przodu?",
+      "type": "spatial", "visual_dependency": "required", "split": "test", "page_family": "louvres",
+      "source_id": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41", "answerable": true,
+      "gold": [{"page": 7, "rectangles": [[0.04, 0.51, 0.66, 0.92]]}],
+      "expected_answer": {"text": "Po prawej stronie.", "facts": [{"kind": "entity", "value": "po prawej", "aliases": ["z prawej", "prawej stronie"]}]},
+      "review": {"status": "agent_inspected", "method": "Direct source-image inspection of MOTOR position in the upper opening diagram", "human_reviewer": null}
+    },
+    {
+      "id": "echo-05", "q": "Jaki kod RAL ma skrajna prawa próbka w pierwszym rzędzie standardowych kolorów pergoli ECHO?",
+      "type": "spatial", "visual_dependency": "required", "split": "test", "page_family": "colours",
+      "source_id": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41", "answerable": true,
+      "gold": [{"page": 16, "rectangles": [[0.04, 0.13, 0.95, 0.27]]}],
+      "expected_answer": {"text": "RAL 5004", "facts": [{"kind": "entity", "value": "RAL 5004"}]},
+      "review": {"status": "agent_inspected", "method": "Direct source-image inspection of the first row of six standard colour swatches", "human_reviewer": null}
+    },
+    {
+      "id": "echo-06", "q": "Jaką wartość w tabeli wagi pergoli wolnostojącej ECHO podano dla szerokości 2000 mm i wysięgu 2000 mm?",
+      "type": "table_intersection", "visual_dependency": "required", "split": "test", "page_family": "freestanding-weight",
+      "source_id": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41", "answerable": true,
+      "gold": [{"page": 12, "rectangles": [[0.04, 0.38, 0.96, 0.94]]}],
+      "expected_answer": {"text": "228", "facts": [{"kind": "number", "value": 228, "unit": ""}]},
+      "review": {"status": "agent_inspected", "method": "Direct source-image inspection at width row 2000 and length column 2000 (10 louvres); no unit inferred", "human_reviewer": null}
+    },
+    {
+      "id": "echo-07", "q": "Jaką wartość w tabeli wagi pergoli przyściennej ECHO podano dla szerokości 4000 mm i wysięgu 7010 mm?",
+      "type": "table_intersection", "visual_dependency": "required", "split": "test", "page_family": "wall-mounted-weight",
+      "source_id": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41", "answerable": true,
+      "gold": [{"page": 15, "rectangles": [[0.04, 0.38, 0.96, 0.94]]}],
+      "expected_answer": {"text": "726", "facts": [{"kind": "number", "value": 726, "unit": ""}]},
+      "review": {"status": "agent_inspected", "method": "Direct source-image inspection of bottom-right table cell, width 4000 and length 7010 (37 louvres); no unit inferred", "human_reviewer": null}
+    },
+    {
+      "id": "echo-08", "q": "Jakie wymiary ma mały zamknięty przekrój prowadnicy po prawej u góry na stronie przekrojów ZIP SCREEN?",
+      "type": "diagram", "visual_dependency": "required", "split": "test", "page_family": "zip-sections",
+      "source_id": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41", "answerable": true,
+      "gold": [{"page": 18, "rectangles": [[0.45, 0.13, 0.59, 0.30]]}],
+      "expected_answer": {"text": "30 x 48 mm", "facts": [{"kind": "dimensions", "values": [30, 48], "unit": "mm"}]},
+      "review": {"status": "agent_inspected", "method": "Direct source-image inspection of the small upper-right ZIP profile and both dimension arrows", "human_reviewer": null}
+    },
+    {
+      "id": "echo-09", "q": "Jaką szerokość profilu SLIDE GLASS pokazano dla wersji czteroszynowej pergoli ECHO?",
+      "type": "diagram", "visual_dependency": "required", "split": "test", "page_family": "glass-sections",
+      "source_id": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41", "answerable": true,
+      "gold": [{"page": 24, "rectangles": [[0.64, 0.56, 0.96, 0.89]]}],
+      "expected_answer": {"text": "91,3 mm", "facts": [{"kind": "number", "value": 91.3, "unit": "mm", "tolerance": 0.01}]},
+      "review": {"status": "agent_inspected", "method": "Direct source-image inspection of four-track profiles in the lower-right section", "human_reviewer": null}
+    },
+    {
+      "id": "echo-10", "q": "Jak nazywa się drugi wzór od lewej w dolnym rzędzie palety kolorów Decor pergoli ECHO?",
+      "type": "spatial", "visual_dependency": "required", "split": "test", "page_family": "colours",
+      "source_id": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41", "answerable": true,
+      "gold": [{"page": 16, "rectangles": [[0.04, 0.75, 0.95, 0.94]]}],
+      "expected_answer": {"text": "Heban", "facts": [{"kind": "entity", "value": "Heban"}]},
+      "review": {"status": "agent_inspected", "method": "Direct source-image inspection of the second Decor swatch from the left in the bottom row", "human_reviewer": null}
+    },
+    {
+      "id": "echo-11", "q": "Ile wynosi cena netto pergoli ECHO o szerokości 4000 mm i wysięgu 7010 mm?",
+      "type": "negative", "visual_dependency": "none", "split": "test", "page_family": "not-in-document",
+      "source_id": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41", "answerable": false, "gold": [],
+      "expected_answer": {"text": "Broszura nie podaje cen; tabela wagi nie jest cennikiem.", "facts": []},
+      "review": {"status": "agent_inspected", "method": "Source outline and full text inspected; this is a technical brochure without a price list. Independent audit of absence pending.", "human_reviewer": null}
+    },
+    {
+      "id": "echo-12", "q": "Jaka jest pojemność baterii awaryjnego zasilania pergoli ECHO w Ah?",
+      "type": "negative", "visual_dependency": "none", "split": "test", "page_family": "not-in-document",
+      "source_id": "ae4b48f98101482a7ddd631823ba425b5ff841c2e518b460a3de143db59bcf41", "answerable": false, "gold": [],
+      "expected_answer": {"text": "Broszura nie podaje pojemności baterii awaryjnej.", "facts": []},
+      "review": {"status": "agent_inspected", "method": "Full text checked for battery/capacity terms; independent audit of absence pending.", "human_reviewer": null}
+    }
+  ]
+}

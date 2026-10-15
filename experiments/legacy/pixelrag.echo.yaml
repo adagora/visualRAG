@@ -1,0 +1,12 @@
+# Public ECHO brochure: a separate comparison corpus.
+source:
+  type: pdf
+  path: ./corpora/echo
+embed:
+  model: Qwen/Qwen3-VL-Embedding-2B
+  revision: 9f2f7e710d6d81056aa5c0a4f04764fec6bb7bda
+  device: cuda
+  backend: direct_gpu
+  gpu_ids: [0]
+  batch_size: 2
+output: ./index-echo-qwen

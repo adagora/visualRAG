@@ -1,0 +1,26 @@
+{
+  "source": "corpora\\px1\\4423_PRICELIST_DOC-PRICE-1_20260414_CennikBramyGarazowe.pdf",
+  "source_sha256": "8f0b20bb573359b401463c479492326c93a3044544eb7aac4f58628cecf231b1",
+  "fixture_sha256": "abb6d78e37f41ee2e75d32aad591cd9cc9cc40d9f295ed9d429bdc9578991ca6",
+  "dpi": 120,
+  "textless_verified": true,
+  "page_map": [
+    {
+      "fixture_page": 1,
+      "source_page": 17
+    },
+    {
+      "fixture_page": 2,
+      "source_page": 22
+    },
+    {
+      "fixture_page": 3,
+      "source_page": 36
+    },
+    {
+      "fixture_page": 4,
+      "source_page": 231
+    }
+  ],
+  "review_status": "derived_fixture_requires_separate_index_and_gold_mapping"
+}

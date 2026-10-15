@@ -1,0 +1,12 @@
+# Four flattened PX1 pages; no extractable text. Smoke test, not a scale benchmark.
+source:
+  type: pdf
+  path: ./eval/fixtures
+embed:
+  model: Qwen/Qwen3-VL-Embedding-2B
+  device: cuda
+  backend: direct_gpu
+  gpu_ids: [0]
+index:
+  backend: faiss
+output: ./index-px1-scan
