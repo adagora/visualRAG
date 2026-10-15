@@ -215,3 +215,124 @@ def test_disabled_jev_makes_no_decisions_even_with_key(setup, monkeypatch):
     monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
     monkeypatch.setattr(rag.jev, "_request", lambda *a: pytest.fail("Unrequested Jev call"))
     assert rag.answer(setup.index, "Question")["retrieval"]["jev"]["status"] == "off"
+
+
+def test_reader_quote_is_located_on_attached_pdf_without_another_model_call(setup, tmp_path):
+    import pymupdf
+    pdf = tmp_path / "warranty.pdf"
+    with pymupdf.open() as document:
+        document.new_page().insert_text((60, 100), "Gwarancja trwa 5 lat.", fontsize=16)
+        document.save(pdf)
+    setup.index.source_pdf = Mock(return_value=pdf)
+    setup.response.text = json.dumps({"answer": "Gwarancja trwa 5 lat.", "citations": [
+        {"source_id": "source-0", "page": 1, "quote": "Gwarancja trwa 5 lat.",
+         "box": {"left": 0, "top": 0, "right": 1, "bottom": 1}},
+        {"source_id": "REFERENCE", "page": 1, "quote": "Do not locate", "box": None}]})
+    result = rag.answer(setup.index, "podaj mi gwarancje")
+    assert len(result["citations"]) == 1
+    citation = result["citations"][0]
+    assert citation["highlight_status"] == "matched"
+    assert citation["quote"] == "Gwarancja trwa 5 lat."
+    assert citation["rects"][0]["width"] < .5
+    setup.index.source_pdf.assert_called_once_with(0)
+    setup.generate.assert_called_once()
+    setup.index.search.assert_called_once()
+
+
+def test_bad_location_metadata_cannot_discard_answer(setup):
+    setup.response.text = json.dumps({"answer": "Odpowiedz", "citations": [
+        {"source_id": "source-0", "page": 1, "quote": {"invalid": True},
+         "box": {"left": 1, "right": 0}}]})
+    result = rag.answer(setup.index, "Pytanie")
+    assert result["answer"] == "Odpowiedz"
+    assert result["citations"][0]["highlight_status"] == "unavailable"
+    assert result["citations"][0]["rects"] == []
+
+
+def test_topic_reaches_stream_and_final_card_even_when_reader_abstains(setup, monkeypatch):
+    classification = {"category": "warranty", "confidence": .91}
+    monkeypatch.setattr(rag.jev, "rerank", lambda index, question, hits, **kw:
+                        (hits[:4], {"status": "applied", "classification": classification}))
+    setup.response.text = json.dumps({"answer": "Brak warunkow gwarancji w zrodlach.", "citations": []})
+    events = []
+    result = rag.answer(setup.index, "podaj mi gwarancje", jev_enabled=True, on_event=events.append)
+    assert result["classification"] == classification
+    assert result["citations"] == []
+    assert [event["type"] for event in events] == ["reranking", "classification", "retrieved", "reading"]
+    assert events[1] == {"type": "classification", **classification}
+    setup.generate.assert_called_once()
+
+
+def test_jev_off_leaves_topic_unclassified_and_emits_no_topic_event(setup):
+    events = []
+    result = rag.answer(setup.index, "podaj mi gwarancje", jev_enabled=False, on_event=events.append)
+    assert result["classification"] == {"category": "unclassified", "confidence": None}
+    assert all(event["type"] != "classification" for event in events)
+
+
+def test_followup_is_resolved_before_embedding_and_history_is_not_reader_evidence(setup):
+    previous = "Previous unverified price: 999999 PLN"
+    context_response = SimpleNamespace(text=json.dumps({
+        "question": "Jaka jest szerokość SLIDE GLASS?", "needs_clarification": False}))
+    setup.generate.side_effect = [context_response, setup.response]
+    result = rag.answer(setup.index, "a jaka szerokość?", history=[
+        {"role": "user", "text": "Opisz SLIDE GLASS"}, {"role": "assistant", "text": previous}])
+    setup.index.search.assert_called_once_with("Jaka jest szerokość SLIDE GLASS?", image=None, limit=4)
+    assert result["resolved_question"] == "Jaka jest szerokość SLIDE GLASS?"
+    assert result["context"]["calls"] == 1 and result["reader_calls"] == 1
+    assert setup.generate.call_count == 2
+    reader_request = setup.generate.call_args_list[1].kwargs
+    parts = reader_request["contents"][0].parts
+    assert parts[0].text == "QUESTION\nJaka jest szerokość SLIDE GLASS?"
+    assert not any(previous in (part.text or "") for part in parts)
+
+
+def test_ambiguity_stops_before_embedding_jev_and_answer_reader(setup, monkeypatch):
+    setup.response.text = json.dumps({"question": "Chodzi o ZIP SCREEN czy SLIDE GLASS?",
+                                      "needs_clarification": True})
+    rerank = Mock(side_effect=AssertionError("Ambiguity reached Jev"))
+    monkeypatch.setattr(rag.jev, "rerank", rerank)
+    events = []
+    result = rag.answer(setup.index, "a jaka szerokość?", jev_enabled=True,
+                        history=[{"role": "user", "text": "Porównaj ZIP SCREEN i SLIDE GLASS"}],
+                        on_event=events.append)
+    assert result["needs_clarification"] and result["reader_calls"] == 0
+    assert "ZIP SCREEN" in result["answer"]
+    assert result["pages"] == result["citations"] == []
+    setup.index.search.assert_not_called()
+    setup.generate.assert_called_once()
+    assert [event["type"] for event in events] == ["resolving_context", "context"]
+
+
+def test_cancellation_during_context_never_embeds_followup(setup):
+    state = {"cancelled": False}
+    def resolve(**kwargs):
+        state["cancelled"] = True
+        return SimpleNamespace(text=json.dumps({"question": "SLIDE GLASS width", "needs_clarification": False}))
+    setup.generate.side_effect = resolve
+    with pytest.raises(rag.CancelledError):
+        rag.answer(setup.index, "a jaka szerokość?", history=[{"role": "user", "text": "SLIDE GLASS"}],
+                   cancelled=lambda: state["cancelled"])
+    setup.index.search.assert_not_called()
+
+
+@pytest.mark.parametrize("task", ["explain", "find_document", "procedure", "compare"])
+def test_jev_task_hint_reaches_reader_without_weakening_evidence_budget(setup, monkeypatch, task):
+    decision = {"name": task, "confidence": .9}
+    monkeypatch.setattr(rag.jev, "rerank", lambda index, question, hits, **kw:
+                        (hits[:4], {"status": "applied", "task": decision}))
+    events = []
+    result = rag.answer(setup.index, "Pytanie", jev_enabled=True, on_event=events.append)
+    request = setup.generate.call_args.kwargs
+    assert rag.jev.TASK_INSTRUCTIONS[task] in request["config"].system_instruction
+    assert rag.SYSTEM_PROMPT in request["config"].system_instruction
+    assert len(result["pages"]) == 4 and result["task"] == decision
+    assert {"type": "task", **decision} in events
+    setup.generate.assert_called_once()
+
+
+def test_invalid_page_budget_with_history_stops_before_context_call(setup):
+    with pytest.raises(ValueError, match="budget"):
+        rag.answer(setup.index, "a jaka szerokość?", pages=5,
+                   history=[{"role": "user", "text": "SLIDE GLASS"}])
+    setup.client.assert_not_called()

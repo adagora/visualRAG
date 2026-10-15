@@ -46,8 +46,19 @@ def test_one_image_question_per_candidate_and_actual_model(sample):
     payload, key = request.call_args.args
     assert key == "test-key" and payload["model"] == jev.MODEL
     assert set(payload["state"]) == {"question", "reference_image"}
-    assert len(payload["assets"]) == 9 and len(payload["questions"]) == 8
-    refs = [q["instructions"]["candidate"]["image"] for q in payload["questions"].values()]
+    assert len(payload["assets"]) == 9 and len(payload["questions"]) == 10
+    topic = payload["questions"]["topic"]
+    assert topic["type"] == "choice" and set(topic["criteria"]) == set(jev.TOPICS)
+    assert "only state.question" in topic["instructions"]
+    assert "state.reference_image" in topic["instructions"]
+    task = payload["questions"]["task"]
+    assert task["type"] == "choice" and set(task["criteria"]) == set(jev.TASKS)
+    assert "only state.question" in task["instructions"]
+    assert "state.reference_image" in task["instructions"]
+    assert "independently of the topic" in task["instructions"]
+    assert set(payload["questions"]) == {"topic", "task"} | {f"page_{i}" for i in range(8)}
+    refs = [q["instructions"]["candidate"]["image"]
+            for name, q in payload["questions"].items() if name.startswith("page_")]
     assert len(set(refs)) == 8
     assert payload["state"]["reference_image"] not in refs
     for asset in payload["assets"].values():
@@ -91,8 +102,167 @@ def test_missing_key_and_empty_retrieval_make_no_request(sample, monkeypatch):
     ranked, report = jev.rerank(index, "Question", hits)
     assert ranked == hits[:4] and report["calls"] == 0
     assert report["status"] == "fallback"
-    assert jev.rerank(index, "Question", [])[1]["status"] == "skipped"
+    assert report["classification"] == {"category": "unclassified", "confidence": None}
+    assert report["task"] == {"name": "other", "confidence": None}
+    empty_report = jev.rerank(index, "Question", [])[1]
+    assert empty_report["status"] == "skipped"
+    assert empty_report["classification"] == report["classification"]
+    assert empty_report["task"] == report["task"]
     request.assert_not_called()
+
+
+def topic_answer(category="warranty", confidence=.9):
+    return {"type": "choice", "choice": category, "confidence": confidence,
+            "probabilities": {name: float(name == category) for name in jev.TOPICS}}
+
+
+@pytest.mark.parametrize("category", list(jev.TOPICS))
+def test_topic_is_user_intent_in_same_request(sample, category):
+    index, hits, response, request = sample
+    response["answers"]["topic"] = topic_answer(category)
+    ranked, report = jev.rerank(index, "podaj mi gwarancje", hits)
+    assert report["classification"] == {"category": category, "confidence": .9}
+    assert report["status"] == "applied" and ranked[0]["page"] == 8
+    request.assert_called_once()
+    payload = request.call_args.args[0]
+    assert payload["state"] == {"question": "podaj mi gwarancje"}
+    assert len(payload["assets"]) == 8
+    assert len(payload["questions"]) == 10
+
+
+@pytest.mark.parametrize("answer", [None, {}, [], "warranty",
+    {"type": "noul", "choice": "warranty", "confidence": .9},
+    topic_answer("unknown"), topic_answer(["warranty"]),
+    *[topic_answer(confidence=value) for value in
+      [True, None, "0.9", -.1, 1.1, float("nan"), float("inf")]],
+    {"type": "choice", "choice": "warranty"}])
+def test_invalid_topic_does_not_discard_good_page_scores(sample, answer):
+    index, hits, response, request = sample
+    response["answers"]["topic"] = answer
+    ranked, report = jev.rerank(index, "podaj mi gwarancje", hits)
+    assert report["classification"] == {"category": "unclassified", "confidence": None}
+    assert report["status"] == "applied" and ranked[0]["page"] == 8
+
+
+@pytest.mark.parametrize("confidence, category", [(.64, "unclassified"), (.65, "warranty")])
+def test_topic_confidence_boundary_does_not_affect_ranking(sample, confidence, category):
+    index, hits, response, request = sample
+    response["answers"]["topic"] = topic_answer(confidence=confidence)
+    ranked, report = jev.rerank(index, "podaj mi gwarancje", hits)
+    assert report["classification"] == {"category": category, "confidence": confidence}
+    assert report["status"] == "applied" and ranked[0]["page"] == 8
+
+
+def test_missing_topic_does_not_discard_good_page_scores(sample):
+    index, hits, response, request = sample
+    ranked, report = jev.rerank(index, "Question", hits)
+    assert report["classification"] == {"category": "unclassified", "confidence": None}
+    assert report["status"] == "applied" and ranked[0]["page"] == 8
+
+
+@pytest.mark.parametrize("change", ["page_score", "missing_page", "extra_answer", "usage", "model"])
+def test_valid_topic_survives_page_ranking_fallback(sample, change):
+    index, hits, response, request = sample
+    response["answers"]["topic"] = topic_answer()
+    if change == "page_score": response["answers"]["page_0"]["noul"] = True
+    if change == "missing_page": del response["answers"]["page_0"]
+    if change == "extra_answer": response["answers"]["unexpected"] = {}
+    if change == "usage": response["usage"]["input_tokens"] = True
+    if change == "model": del response["model"]
+    ranked, report = jev.rerank(index, "podaj mi gwarancje", hits)
+    assert report["classification"] == {"category": "warranty", "confidence": .9}
+    assert report["status"] == "fallback" and ranked == hits[:4]
+
+
+def task_answer(name="explain", confidence=.9):
+    return {"type": "choice", "choice": name, "confidence": confidence}
+
+
+@pytest.mark.parametrize("name", list(jev.TASKS))
+def test_task_in_same_request_with_valid_topic_and_page_scores(sample, name):
+    index, hits, response, request = sample
+    response["answers"].update(topic=topic_answer(), task=task_answer(name))
+    ranked, report = jev.rerank(index, "Question", hits)
+    assert report["task"] == {"name": name, "confidence": .9}
+    assert report["classification"] == {"category": "warranty", "confidence": .9}
+    assert report["status"] == "applied" and ranked[0]["page"] == 8
+    assert len(ranked) == 4
+    request.assert_called_once()
+
+
+@pytest.mark.parametrize("answer", [None, {}, [], "explain",
+    {"type": "noul", "choice": "explain", "confidence": .9},
+    task_answer("unknown"), task_answer(["explain"]),
+    *[task_answer(confidence=value) for value in
+      [True, None, "0.9", -.1, 1.1, float("nan"), float("inf"), .64]],
+    {"type": "choice", "choice": "explain"}])
+def test_invalid_task_preserves_topic_and_page_scores(sample, answer):
+    index, hits, response, request = sample
+    response["answers"].update(topic=topic_answer(), task=answer)
+    ranked, report = jev.rerank(index, "Question", hits)
+    assert report["task"] == {"name": "other", "confidence": None}
+    assert report["classification"] == {"category": "warranty", "confidence": .9}
+    assert report["status"] == "applied" and ranked[0]["page"] == 8
+
+
+@pytest.mark.parametrize("confidence, expected", [
+    (.649999, {"name": "other", "confidence": None}),
+    (.65, {"name": "procedure", "confidence": .65}),
+    (1, {"name": "procedure", "confidence": 1.0}),
+])
+def test_task_confidence_boundary(sample, confidence, expected):
+    index, hits, response, request = sample
+    response["answers"]["task"] = task_answer("procedure", confidence)
+    ranked, report = jev.rerank(index, "Question", hits)
+    assert report["task"] == expected
+    assert report["status"] == "applied" and ranked[0]["page"] == 8
+
+
+@pytest.mark.parametrize("change", ["topic", "page_score", "missing_page", "extra_answer", "usage", "model"])
+def test_valid_task_survives_independent_metadata_errors(sample, change):
+    index, hits, response, request = sample
+    response["answers"].update(topic=topic_answer(), task=task_answer("find_document"))
+    if change == "topic": response["answers"]["topic"] = {}
+    if change == "page_score": response["answers"]["page_0"]["noul"] = True
+    if change == "missing_page": del response["answers"]["page_0"]
+    if change == "extra_answer": response["answers"]["unexpected"] = {}
+    if change == "usage": response["usage"]["input_tokens"] = True
+    if change == "model": del response["model"]
+    ranked, report = jev.rerank(index, "Question", hits)
+    assert report["task"] == {"name": "find_document", "confidence": .9}
+    if change == "topic":
+        assert report["classification"] == {"category": "unclassified", "confidence": None}
+        assert report["status"] == "applied" and ranked[0]["page"] == 8
+    else:
+        assert report["classification"] == {"category": "warranty", "confidence": .9}
+        assert report["status"] == "fallback" and ranked == hits[:4]
+
+
+@pytest.mark.parametrize("metadata", [(), ("topic",), ("task",), ("topic", "task")])
+def test_scores_accept_optional_metadata_combinations(sample, metadata):
+    index, hits, response, request = sample
+    for name in metadata:
+        response["answers"][name] = {}  # Scores ignore independently validated metadata.
+    assert jev._scores(response, 8) == [i / 10 for i in range(8)]
+    response["answers"]["unexpected"] = {}
+    with pytest.raises(jev.JevError, match="incomplete page decisions"):
+        jev._scores(response, 8)
+
+
+def test_missing_task_defaults_without_discarding_scores(sample):
+    index, hits, response, request = sample
+    ranked, report = jev.rerank(index, "Question", hits)
+    assert report["task"] == {"name": "other", "confidence": None}
+    assert report["status"] == "applied" and ranked[0]["page"] == 8
+
+
+def test_reader_task_instructions_are_fixed_for_all_choices():
+    assert set(jev.TASK_INSTRUCTIONS) == set(jev.TASKS)
+    assert all(isinstance(text, str) and text for text in jev.TASK_INSTRUCTIONS.values())
+    assert "exact requested" in jev.TASK_INSTRUCTIONS["find_document"]
+    assert "never substitute a brochure" in jev.TASK_INSTRUCTIONS["find_document"]
+    assert "numbered steps" in jev.TASK_INSTRUCTIONS["procedure"]
+    assert "missing evidence" in jev.TASK_INSTRUCTIONS["compare"]
 
 
 def test_transport_failure_preserves_dense_order(sample):

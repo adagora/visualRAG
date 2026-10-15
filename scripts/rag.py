@@ -5,6 +5,8 @@ import json
 import os
 import time
 
+import chat_context
+import citations as citation_locations
 import gemini_index
 import jev
 
@@ -25,7 +27,12 @@ metr bieżący ani opakowanie. Nie dopowiadaj podatku, wariantu czy wymiarów.
 Nie przeliczaj ceny bez jawnej podstawy i wszystkich potrzebnych danych.
 Gdy brakuje dowodu, jednostki lub cena jest nieczytelna, powiedz wprost,
 czego nie da się ustalić z załączonych stron. Nie zastępuj tego wiedzą ogólną.
-Zwróć JSON z answer (odpowiedź) i citations (lista source_id oraz page).
+Zwróć JSON z answer (odpowiedź) i citations (lista source_id, page, quote, box).
+Do quote skopiuj krótki, dosłowny fragment dowodu z danej strony (do 600 znaków).
+Nie parafrazuj cytatu. Jeśli dowód jest tylko rysunkiem, quote może być pusty.
+Box wskazuje mały obszar dowodu na załączonej stronie: left, top, right, bottom
+to ułamki od 0 do 1, mierzone od lewego górnego rogu całego obrazu strony.
+Nie podawaj pola obrazu REFERENCE. Jeśli nie potrafisz wskazać obszaru, box = null.
 Jeżeli brak podstaw do odpowiedzi, wyraźnie odmów ustalenia wyniku;
 cytuj tylko strony faktycznie wspierające podane informacje, ewentualnie []."""
 
@@ -40,8 +47,17 @@ RESPONSE_SCHEMA = {
                 "properties": {
                     "source_id": {"type": "string"},
                     "page": {"type": "integer", "minimum": 1},
+                    "quote": {"type": "string", "maxLength": 600},
+                    "box": {"anyOf": [
+                        {"type": "object", "properties": {
+                            edge: {"type": "number", "minimum": 0, "maximum": 1}
+                            for edge in ("left", "top", "right", "bottom")
+                        }, "required": ["left", "top", "right", "bottom"],
+                         "additionalProperties": False},
+                        {"type": "null"},
+                    ]},
                 },
-                "required": ["source_id", "page"],
+                "required": ["source_id", "page", "quote", "box"],
                 "additionalProperties": False,
             },
         },
@@ -56,7 +72,7 @@ def _check_cancelled(cancelled):
         raise CancelledError("Answer cancelled.")
 
 
-def _read(index, question, hits, image, model, cancelled):
+def _read(index, question, hits, image, model, cancelled, task=None):
     from google.genai import types
 
     parts = [types.Part.from_text(text="QUESTION\n" + question)]
@@ -76,11 +92,16 @@ def _read(index, question, hits, image, model, cancelled):
     _check_cancelled(cancelled)
     owner = gemini_index.client()
     _check_cancelled(cancelled)
+    instructions = SYSTEM_PROMPT
+    if task and task.get("name") != "other":
+        hint = jev.TASK_INSTRUCTIONS.get(task.get("name"))
+        if hint:
+            instructions += "\nRESPONSE TASK\n" + hint
     return owner.models.generate_content(
         model=model,
         contents=[types.Content(role="user", parts=parts)],
         config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
+            system_instruction=instructions,
             response_mime_type="application/json",
             response_json_schema=RESPONSE_SCHEMA,
             max_output_tokens=4096,
@@ -89,7 +110,7 @@ def _read(index, question, hits, image, model, cancelled):
     )
 
 
-def _parse_response(response, hits):
+def _parse_response(response, hits, index=None):
     try:
         data = json.loads(response.text)
     except (ValueError, TypeError, AttributeError) as exc:
@@ -101,7 +122,9 @@ def _parse_response(response, hits):
     allowed = {(hit["source_id"], hit["page"]): hit for hit in hits}
     citations, seen = [], set()
     for citation in data["citations"]:
-        if (not isinstance(citation, dict) or set(citation) != {"source_id", "page"}
+        if (not isinstance(citation, dict)
+                or not {"source_id", "page"} <= set(citation)
+                or set(citation) - {"source_id", "page", "quote", "box"}
                 or not isinstance(citation["source_id"], str)
                 or type(citation["page"]) is not int or citation["page"] < 1):
             raise ValueError("Gemini reader returned an invalid citation.")
@@ -109,20 +132,34 @@ def _parse_response(response, hits):
         if key in allowed and key not in seen:
             seen.add(key)
             hit = allowed[key]
-            citations.append({name: hit[name] for name in (
-                "source_id", "article_id", "document", "page")})
+            item = {name: hit[name] for name in (
+                "source_id", "article_id", "document", "page")}
+            if "quote" in citation or "box" in citation:
+                pdf = None
+                if index is not None:
+                    try:
+                        pdf = index.source_pdf(hit["article_id"])
+                    except (AttributeError, OSError, ValueError, IndexError, KeyError):
+                        pass
+                item.update(citation_locations.locate(
+                    pdf, hit["page"], citation.get("quote"), citation.get("box")))
+            citations.append(item)
     return data["answer"], citations
 
 
-def retrieve(index, question, *, image=None, pages=4, jev_enabled=None,
-             on_event=None, cancelled=None):
-    """One embedding, optional bounded image decisions, and source-aware pages."""
+def _validate_input(question, image, pages):
     if type(pages) is not int or not 1 <= pages <= 4:
         raise ValueError("Reader page budget must be an integer from 1 to 4.")
     if not isinstance(question, str) or (not question.strip() and image is None):
         raise ValueError("Provide a question or a reference image.")
     if image is not None and not isinstance(image, bytes):
         raise ValueError("Reference image must be PNG bytes.")
+
+
+def retrieve(index, question, *, image=None, pages=4, jev_enabled=None,
+             on_event=None, cancelled=None):
+    """One embedding, optional bounded image decisions, and source-aware pages."""
+    _validate_input(question, image, pages)
     use_jev = jev.enabled() if jev_enabled is None else jev_enabled
     _check_cancelled(cancelled)
     retrieved = index.search(question, image=image, limit=jev.CANDIDATES if use_jev else pages)
@@ -144,19 +181,53 @@ def retrieve(index, question, *, image=None, pages=4, jev_enabled=None,
             index, question, hits, image=image, limit=pages,
             check_cancelled=lambda: _check_cancelled(cancelled))
     _check_cancelled(cancelled)
+    classification = decision.get("classification", {"category": "unclassified", "confidence": None})
+    task = decision.get("task", {"name": "other", "confidence": None})
+    if on_event and classification["category"] != "unclassified":
+        on_event({"type": "classification", **classification})
+        _check_cancelled(cancelled)
+    if on_event and task["name"] != "other":
+        on_event({"type": "task", **task})
+        _check_cancelled(cancelled)
     if on_event:
         on_event({"type": "retrieved", "pages": hits})
     _check_cancelled(cancelled)
-    return {"pages": hits, "candidates": candidates, "jev": decision}
+    return {"pages": hits, "candidates": candidates, "jev": decision,
+            "classification": classification, "task": task}
 
 
 def answer(index, question, *, image=None, pages=4, jev_enabled=None,
-           on_event=None, cancelled=None):
-    """Retrieve once and read once, with optional experimental image reranking."""
+           on_event=None, cancelled=None, history=None, selected_document=None):
+    """Resolve references when needed, retrieve once, and read at most four pages."""
+    _validate_input(question, image, pages)
     start = time.perf_counter()
     model = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+    _check_cancelled(cancelled)
+    recent = chat_context.bounded_history(history)
+    if on_event and recent:
+        on_event({"type": "resolving_context"})
+        _check_cancelled(cancelled)
+    context = chat_context.resolve(
+        question, recent, selected_document=selected_document, has_reference_image=image is not None,
+        check_cancelled=lambda: _check_cancelled(cancelled))
+    _check_cancelled(cancelled)
+    resolved = question if context["needs_clarification"] else context["question"]
+    if on_event and recent:
+        on_event({"type": "context", "question": resolved, "contextual": context["contextual"]})
+        _check_cancelled(cancelled)
+    if context["needs_clarification"]:
+        classification = {"category": "unclassified", "confidence": None}
+        task = {"name": "other", "confidence": None}
+        retrieval = {"pages": [], "candidates": [], "jev": {"status": "skipped", "calls": 0},
+                     "classification": classification, "task": task}
+        return {"answer": context["question"], "needs_clarification": True,
+                "resolved_question": question, "context": context, "classification": classification,
+                "task": task, "retrieval": retrieval, "pages": [], "citations": [], "model": model,
+                "reader_calls": 0, "usage": {"input": 0, "output": 0, "thoughts": 0},
+                "timings": {"context": context["seconds"], "search": 0.0, "reader": 0.0,
+                            "total": time.perf_counter() - start}}
     search_start = time.perf_counter()
-    retrieval = retrieve(index, question, image=image, pages=pages, jev_enabled=jev_enabled,
+    retrieval = retrieve(index, resolved, image=image, pages=pages, jev_enabled=jev_enabled,
                          on_event=on_event, cancelled=cancelled)
     search_seconds = time.perf_counter() - search_start
     hits = retrieval["pages"]
@@ -164,18 +235,21 @@ def answer(index, question, *, image=None, pages=4, jev_enabled=None,
         "answer": "Nie znaleziono stron dokumentów, na których można oprzeć odpowiedź.",
         "citations": [], "pages": hits, "model": model,
         "usage": {"input": 0, "output": 0, "thoughts": 0},
-        "timings": {"search": search_seconds, "reader": 0.0, "total": 0.0},
+        "timings": {"context": context["seconds"], "search": search_seconds, "reader": 0.0, "total": 0.0},
         "reader_calls": 0, "retrieval": retrieval,
+        "classification": retrieval["classification"],
+        "task": retrieval["task"], "context": context,
+        "resolved_question": resolved, "needs_clarification": False,
     }
     if hits:
         if on_event:
             on_event({"type": "reading"})
         _check_cancelled(cancelled)
         reader_start = time.perf_counter()
-        response = _read(index, question, hits, image, model, cancelled)
+        response = _read(index, resolved, hits, image, model, cancelled, retrieval["task"])
         reader_seconds = time.perf_counter() - reader_start
         _check_cancelled(cancelled)
-        result["answer"], result["citations"] = _parse_response(response, hits)
+        result["answer"], result["citations"] = _parse_response(response, hits, index)
         usage = getattr(response, "usage_metadata", None)
         result["usage"] = {
             "input": getattr(usage, "prompt_token_count", None) or 0,

@@ -29,11 +29,11 @@ pixelrag-eval = "evaluate:main"
 
 [tool.setuptools]
 package-dir = {"" = "scripts"}
-py-modules = ["app", "ask", "evaluate", "gemini_index", "index_manifest", "jev", "rag", "visual_query"]
+py-modules = ["app", "ask", "chat_context", "citations", "evaluate", "gemini_index", "index_manifest", "jev", "rag", "visual_query"]
 
 [tool.setuptools.data-files]
 "share/pixelrag/static" = ["scripts/static/index.html"]
-"share/pixelrag/static/vendor" = ["scripts/static/vendor/pdf.min.mjs", "scripts/static/vendor/pdf.worker.min.mjs"]
+"share/pixelrag/static/vendor" = ["scripts/static/vendor/pdf.min.mjs", "scripts/static/vendor/pdf.worker.min.mjs", "scripts/static/vendor/markdown-it.min.js", "scripts/static/vendor/markdown-it.LICENSE.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

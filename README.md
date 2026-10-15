@@ -43,9 +43,15 @@ The [27-page ECHO brochure](https://www.wisniowski.pl/images/foldery-online/pl/k
 
 Type a question or attach a PNG/JPEG/WebP screenshot up to 5 MB. Found pages appear before the answer. Click a preview or citation to open the corresponding original PDF page; citations from earlier answers continue to work.
 
+Answers render Markdown, including emphasis, lists, tables and code. Topic labels also tint the response card and its citations: green for warranties, amber for complaints, blue for service, violet for instructions, bronze for prices and muted grey-green for other topics. Unclassified cards stay neutral. The local Markdown renderer is markdown-it 15.0.2 (MIT, license included); raw HTML and remote Markdown images are disabled, and links accept only HTTP(S), mailto or relative URLs. Original answer text is retained in conversation history.
+
+Click a citation to highlight its evidence in the built-in PDF viewer. The existing Gemini reader returns a short copied quote and, when possible, a normalized page region. A quote found in the source PDF's text layer gets a solid highlight; a reader-estimated region gets a dashed, explicitly approximate outline. Rotated and cropped pages, resizing and older answers retain their locations. If neither location is available, the citation still opens the page. No OCR service or additional model request is used. Opening the original PDF in a separate tab provides page navigation; highlights are drawn in the app.
+
 Citation links include the source identity, so changing indexes cannot reuse another document's cached PDF. They also support opening the original source in a new tab.
 
-Each question is independent. The reader gets one call and at most four pages. Missing prices, unreadable values and unstated units should produce an explicit limitation instead of a guess. Citations are accepted only for attached source/page pairs; this locates evidence, not a verification of every claim.
+The web chat keeps the latest four completed exchanges, capped at 12,000 text characters in browser memory. A follow-up such as “a jaka szerokość?” can refer to the product from the preceding exchange. When history is present, one small text-only Gemini request resolves the question before retrieval; an ambiguous reference asks for clarification without embedding, Jev or an answer-reader call. The card shows the interpreted question when it changes. Conversation history supplies references, never factual evidence: each answer still reads fresh source pages. Failed and cancelled turns are excluded. **Nowa rozmowa** clears the conversation while keeping the viewed PDF; reloading also resets history. The selected document accompanies follow-up context and its source identity is checked by the server.
+
+The first question and CLI requests have no context-resolution call. Each answer reader still gets one call and at most four pages. Context usage and timing are reported separately in JSON. Missing prices, unreadable values and unstated units should produce an explicit limitation instead of a guess. Citations are accepted only for attached source/page pairs; this locates evidence, not a verification of every claim.
 
 ```powershell
 uv run pixelrag-ask "Jakie wymiary ma ten profil?" --index index-echo-gemini
@@ -69,7 +75,11 @@ uv run pixelrag-ask --image reference.png --index index-echo-gemini --jev --retr
 
 `PIXELRAG_JEV=rerank` enables it through the environment or `.env`; the default is `off`. `--no-jev` overrides that setting. Having a TypeSafe key alone does not enable extra requests.
 
-When enabled, the existing embedding retrieves eight unique source/page candidates. One request to `https://api.typesafe.ai/v1/systemone` asks one Noul relevance question per candidate, then code stably selects four pages. Each candidate image appears in its own question's instructions; only the query and optional reference image are shared state. There is no pairwise tournament. Jev sees baseline JPEG thumbnails capped at 1024 pixels, padded when needed to meet its minimum size. Gemini still reads the original indexed JPEGs. No OCR or PDF text extraction is added.
+When enabled, the existing embedding retrieves eight unique source/page candidates. One request to `https://api.typesafe.ai/v1/systemone` asks one Noul relevance question per candidate, then code stably selects four pages. Each candidate image appears in its own question's instructions; only the query and optional reference image are shared state. There is no pairwise tournament. Jev sees baseline JPEG thumbnails capped at 1024 pixels, padded when needed to meet its minimum size. Gemini still reads the original indexed JPEGs. Retrieval and reading remain image-based; the PDF text layer is used locally only to locate copied citation quotes.
+
+The same Jev request also asks one [Choice](https://docs.typesafe.ai/primitives/choice) about the question's topic: warranty, complaint, service, instructions, price or other. A sufficiently confident warranty decision displays **Temat: Gwarancje** on the response card, including when the answer cannot find warranty terms. This labels the request's intent. Missing, malformed or low-confidence topics leave the card unlabelled and do not invalidate useful page scores. Classification is available in the streamed events and final JSON; Jev-off requests make no classification call. The current 0.65 display cutoff is a UI heuristic, not an evaluated accuracy guarantee.
+
+A second Choice in that same request identifies the task: explain, find a document, give a procedure, compare, or other. Accepted decisions add fixed formatting instructions to the reader: documented numbered steps for procedures, requested comparison dimensions, or an exact document lookup that explicitly reports a missing warranty/manual instead of substituting a brochure. Missing or uncertain task decisions use the normal reader instructions and do not affect valid topics or page scores. Task hints preserve the four-page budget and all citation/evidence rules; the 0.65 cutoff is a heuristic. No additional Jev request is made.
 
 The default model is pinned to **`jev-1.14.0`**, released October 14, 2026. `TYPESAFE_MODEL` can override it. At review time, `jev-preview` resolves to 1.14 while `jev-latest` still resolves to 1.13; simply retaining the old alias would not update the model. See [TypeSafe models](https://docs.typesafe.ai/models).
 
@@ -81,7 +91,7 @@ Feature decisions after reviewing the two posts and current official docs:
 | --- | --- | --- |
 | Images in questions, typed Noul decisions | Integrated, opt-in | Select evidence directly from pixels in one bounded request. |
 | Pairwise Choice / Bradley–Terry ranking | Defer | More comparisons; no matched evidence here that the extra work improves this pipeline. |
-| Box localization | Defer | Full-page evidence and PDF links already work. Box always returns a box, including for an absent target, so a future crop flow also needs a presence check. |
+| Jev Box localization | Defer | Reader quotes/regions restore citation highlights without another decision stage. Box always returns a box, including for an absent target, so using it would also need a presence check and a localization evaluation. |
 | Experimental 262k long context | Defer | The bounded thumbnail request fits normal context; larger context adds documented latency and accuracy costs. |
 | Hard answerability/confidence gate | Defer | Relevance probabilities have not been calibrated for these documents and cannot certify answer grounding. |
 
@@ -115,6 +125,9 @@ uv run pixelrag-eval --index index-echo-gemini --eval eval/echo_image_queries.js
 uv run pytest
 uv run playwright install chromium
 uv run python tests/browser_smoke.py
+uv run python tests/browser_citation_cache.py
+uv run python tests/browser_conversation.py
+uv run python tests/browser_presentation.py
 ```
 
 Evaluation without `--execute` checks source hashes, gold pages and image crops without API calls. Execution makes one billed embedding per positive question; `--jev` or `--compare-jev` additionally makes a Jev request per case. Evaluation defaults to dense retrieval regardless of `PIXELRAG_JEV`. Compare mode shares the exact embedding and candidates between both rankings and reports fallback separately. An execution with embedding errors or Jev fallbacks exits nonzero after writing the report.
@@ -123,6 +136,6 @@ Metrics include evidence first, any evidence within four, all required evidence 
 
 ## Code
 
-Eight modules under `scripts/`: `gemini_index` (images, embeddings and search), `index_manifest` (safe publication), `visual_query` (reference images), `jev` (optional visual decisions), `rag` (shared retrieval and one reader call), `app`, `ask`, and `evaluate`. Jev uses the documented HTTP API directly, so there is no TypeSafe SDK dependency to upgrade.
+Ten modules under `scripts/`: `gemini_index` (images, embeddings and search), `index_manifest` (safe publication), `visual_query` (reference images), `citations` (source quote locations and approximate regions), `chat_context` (bounded conversational references), `jev` (optional visual decisions, question topics and tasks), `rag` (shared retrieval and one answer-reader call), `app`, `ask`, and `evaluate`. Jev uses the documented HTTP API directly, so there is no TypeSafe SDK dependency to upgrade.
 
 The earlier Qwen/CUDA/FAISS stack, hybrid retrieval, text-only Jev/x-ray, pairwise rerankers, planners, caches, browsing agents and larger evaluation suite are preserved under [experiments/legacy](experiments/legacy/ARCHIVE.md). They are outside the main package and tests. The [historical experiment log](experiments/README.md) remains available.

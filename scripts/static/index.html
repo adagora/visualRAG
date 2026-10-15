@@ -6,10 +6,13 @@
 <title>PixelRAG — pytania do dokumentów</title>
 <style>
 :root{color-scheme:light;--bg:#f7f6f3;--paper:#fff;--ink:#242523;--muted:#72736d;--line:#dedfd8;--accent:#42634d}*{box-sizing:border-box}body{margin:0;height:100dvh;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif;display:flex;flex-direction:column}header{padding:16px 24px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:16px}h1{font-size:18px;margin:0}header span,.muted{color:var(--muted);font-size:13px}main{display:grid;grid-template-columns:minmax(320px,.85fr) minmax(0,1.15fr);flex:1;min-height:0}#chat{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line)}#log{flex:1;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:20px}.empty{margin:auto;color:var(--muted);max-width:330px}.empty strong{display:block;color:var(--ink);font-size:20px;margin-bottom:8px}.turn{display:grid;gap:12px}.question{white-space:pre-wrap;overflow-wrap:anywhere;background:#e9ede6;border-radius:12px;padding:12px 16px;margin-left:32px}.question img{display:block;max-width:180px;max-height:150px;margin-top:8px;border-radius:6px}.response{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px}.status{color:var(--muted);font-size:13px}.status.error{color:#a33329}.answer{white-space:pre-wrap;overflow-wrap:anywhere}.evidence-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.evidence{text-align:left;border:1px solid var(--line);background:var(--bg);padding:0;overflow:hidden;border-radius:7px;min-width:0}.evidence img{display:block;width:100%;height:120px;object-fit:contain;background:#e8e8e3}.evidence span{display:block;padding:6px 8px;font-size:11px;overflow-wrap:anywhere}.citations{display:flex;flex-wrap:wrap;gap:6px}.citation{display:inline-block;font-size:12px;background:#eef2ec;border:1px solid #cbd6c9;border-radius:7px;padding:8px 12px;color:#33553c;text-align:left;text-decoration:none}.citation:hover{border-color:var(--accent);text-decoration:underline}.citation:focus-visible{outline:2px solid var(--accent);outline-offset:2px}button,input,select,textarea{font:inherit;color:inherit}button{border:1px solid var(--line);border-radius:7px;padding:8px 12px;background:var(--paper);cursor:pointer}button:hover:not(:disabled){border-color:var(--accent)}button:disabled{opacity:.5;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}#composer{padding:16px 20px;border-top:1px solid var(--line);background:var(--paper)}#q{width:100%;resize:vertical;min-height:85px;max-height:210px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}.actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}.upload{font-size:13px;cursor:pointer;border:1px solid var(--line);padding:7px 10px;border-radius:7px}#queryImage{width:1px;height:1px;position:absolute;opacity:0}.upload:focus-within{outline:2px solid var(--accent)}#send{margin-left:auto;background:var(--accent);border-color:var(--accent);color:white}#attachment{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:12px}#attachment[hidden]{display:none}#attachment img{height:48px;width:60px;object-fit:contain;border-radius:4px}#attachmentName{overflow-wrap:anywhere;flex:1}#formStatus{min-height:20px;font-size:12px;color:#a33329;margin-top:4px}#viewer{display:flex;flex-direction:column;min-width:0;min-height:0}.viewer-tools{padding:12px 16px;display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--line);flex-wrap:wrap;font-size:13px}#docSel{flex:1;min-width:100px;max-width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--paper)}#pgNum{width:64px;padding:7px;border:1px solid var(--line);border-radius:6px;background:var(--paper)}#pdfArea{overflow:auto;flex:1;padding:22px;background:#e6e7e2;position:relative}#viewerStatus{color:var(--muted);font-size:13px;margin:0 0 12px}#pdfCanvas{display:block;margin:auto;max-width:100%;height:auto;background:white;box-shadow:0 2px 12px #00000018}#pdfCanvas[hidden]{display:none}#openPdf{color:var(--accent);font-size:12px}@media(max-width:800px){body{height:auto;min-height:100dvh}header{padding:12px 16px;flex-wrap:wrap;gap:4px 12px}main{display:flex;flex-direction:column}#chat{height:65dvh;min-height:420px;border-right:0}#viewer{height:70dvh;min-height:400px;border-top:1px solid var(--line)}#log{padding:16px}#composer{padding:12px 16px}#pdfArea{padding:12px}.viewer-tools{padding:10px}header span{font-size:12px}}
+#pdfStage{position:relative;margin:auto;width:fit-content;max-width:100%}#pdfCanvas{margin:0}#pdfHighlights{position:absolute;inset:0;pointer-events:none}.pdf-highlight{position:absolute;border:2px solid #986400;background:#ffce354a;border-radius:2px}.pdf-highlight.approximate{border-style:dashed;background:#ffce3528}.topic-badge{justify-self:start;border:1px solid #d5dccc;background:#f0f3eb;color:#45563b;border-radius:999px;padding:2px 9px;font-size:12px}.topic-badge[hidden]{display:none}#highlightQuote{font-size:12px;color:var(--muted);margin:0 0 10px;white-space:pre-wrap;overflow-wrap:anywhere}#highlightQuote[hidden]{display:none}
+.response{min-width:0;box-shadow:0 2px 6px #24252304}.response[data-topic]{background:linear-gradient(120deg,var(--topic-soft),var(--paper) 75%);border-color:var(--topic-border);box-shadow:inset 3px 0 0 var(--topic-accent),0 2px 6px #24252304}.response-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px}.response-header .status{flex:1;min-width:140px;text-align:right;font-size:12px;line-height:1.45}.response-header .topic-badge[hidden]+.status{text-align:left}.response .topic-badge{display:inline-flex;align-items:center;gap:6px;flex:none;padding:4px 10px;font-weight:600;line-height:1.5;white-space:nowrap;color:var(--topic-ink,#45563b);background:var(--topic-soft,#f0f3eb);border-color:var(--topic-border,#d5dccc)}.response .topic-badge[hidden]{display:none}.topic-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--topic-accent,#64716d)}.response[data-topic] .citation{color:var(--topic-ink);background:var(--topic-soft);border-color:var(--topic-border)}.response[data-topic] .citation:hover{border-color:var(--topic-accent)}.evidence-list:empty,.citations:empty{display:none}
+.answer-body{min-width:0}.answer-body.markdown{white-space:normal;line-height:1.7}.markdown>:first-child{margin-top:0}.markdown>:last-child{margin-bottom:0}.markdown p{margin:0 0 .85em}.markdown strong{font-weight:650}.markdown h1,.markdown h2,.markdown h3,.markdown h4,.markdown h5,.markdown h6{font-size:1em;line-height:1.4;font-weight:650;letter-spacing:-.015em;margin:1.3em 0 .5em}.markdown h1,.markdown h2{font-size:1.1em}.markdown ul,.markdown ol{margin:.5em 0 1em;padding-left:1.5em}.markdown li{padding-left:.15em;margin:.25em 0}.markdown li>p{margin:.2em 0}.markdown li>ul,.markdown li>ol{margin:.25em 0 .5em}.markdown a{color:var(--topic-ink,var(--accent));text-decoration-thickness:1px;text-underline-offset:3px;overflow-wrap:anywhere}.markdown a:hover{text-decoration-thickness:2px}.markdown code{font: .88em/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;background:#edf0eb;border-radius:4px;padding:.12em .3em}.markdown pre{max-width:100%;overflow:auto;margin:.85em 0;padding:12px 14px;background:#f3f5f1;border:1px solid var(--line);border-radius:7px;white-space:pre;overflow-wrap:normal}.markdown pre code{padding:0;background:transparent;border-radius:0;white-space:pre}.markdown blockquote{margin:.85em 0;padding:.15em 0 .15em 1em;border-left:3px solid var(--topic-border,var(--line));color:#555e55}.markdown blockquote p:last-child{margin-bottom:0}.markdown table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;margin:.85em 0;font-size:.9em;line-height:1.5}.markdown th,.markdown td{border:1px solid var(--topic-border,var(--line));padding:8px 11px;text-align:left;vertical-align:top;min-width:90px}.markdown th{background:var(--topic-soft,#f0f3eb);font-weight:650}.markdown hr{border:0;border-top:1px solid var(--line);margin:1.1em 0}
 </style>
 </head>
 <body>
-<header><h1>PixelRAG</h1><span>Znajdź odpowiedź i sprawdź ją w dokumencie.</span></header>
+<header><h1>PixelRAG</h1><span>Znajdź odpowiedź i sprawdź ją w dokumencie.</span><button type="button" id="newChat">Nowa rozmowa</button></header>
 <main>
 <section id="chat" aria-label="Pytania do dokumentów">
 <div id="log"><div class="empty" id="welcome"><strong>O co chcesz zapytać?</strong>Wpisz pytanie lub dodaj zrzut ekranu. Zobaczysz znalezione strony i odpowiedź Gemini ze źródłami.</div></div>
@@ -23,25 +26,73 @@
 </section>
 <section id="viewer" aria-label="Podgląd dokumentu PDF">
 <div class="viewer-tools"><select id="docSel" aria-label="Dokument" disabled><option>Ładowanie dokumentów…</option></select><button id="prevPage" type="button" aria-label="Poprzednia strona" disabled>←</button><label for="pgNum">Strona</label><input id="pgNum" type="number" min="1" value="1" aria-label="Numer strony" disabled><span id="pageCount">/ —</span><button id="nextPage" type="button" aria-label="Następna strona" disabled>→</button><a id="openPdf" target="_blank" rel="noopener" hidden>Otwórz PDF</a></div>
-<div id="pdfArea"><p id="viewerStatus" role="status">Ładowanie dokumentów…</p><canvas id="pdfCanvas" hidden aria-label="Strona dokumentu PDF"></canvas></div>
+<div id="pdfArea"><p id="viewerStatus" role="status">Ładowanie dokumentów…</p><p id="highlightQuote" hidden></p><div id="pdfStage"><canvas id="pdfCanvas" hidden aria-label="Strona dokumentu PDF"></canvas><div id="pdfHighlights" aria-label="Zaznaczony fragment dokumentu"></div></div></div>
 </section>
 </main>
+<script src="/vendor/markdown-it.min.js"></script>
 <script type="module">
 const $ = id => document.getElementById(id);
 const docs = new Map();
 let pdfjs, pdf, loadingTask, renderTask, viewerVersion = 0, activeArticle = '', activePage = 1;
 let queryImage = null, imageVersion = 0, uploading = false, request = null;
+let selectedCitation = null;
+let conversation = [];
+function rememberTurn(question, answer) {
+  conversation.push({role:'user',text:question.slice(0,4000)},{role:'assistant',text:answer.slice(0,4000)});
+  while (conversation.length > 8 || conversation.reduce((total,message) => total + message.text.length,0) > 12000) conversation.splice(0,2);
+}
 const pdfReady = import('/vendor/pdf.min.mjs').then(module => { pdfjs = module; pdfjs.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.mjs'; });
 pdfReady.catch(() => {});
 function make(tag, className, text) { const node = document.createElement(tag); if (className) node.className = className; if (text !== undefined) node.textContent = text; return node; }
+const answerMarkdown = typeof window.markdownit === 'function' ? new window.markdownit({html:false,linkify:false,breaks:true}) : null;
+if (answerMarkdown) {
+  answerMarkdown.disable('image');
+  const validateLink = answerMarkdown.validateLink.bind(answerMarkdown);
+  answerMarkdown.validateLink = href => {
+    try { return ['http:','https:','mailto:'].includes(new URL(href,location.href).protocol) && validateLink(href); }
+    catch { return false; }
+  };
+  answerMarkdown.renderer.rules.link_open = (tokens,index,options,env,self) => {
+    tokens[index].attrSet('target','_blank'); tokens[index].attrSet('rel','noopener noreferrer');
+    return self.renderToken(tokens,index,options);
+  };
+}
+function renderAnswer(container, text) {
+  container.classList.toggle('markdown',!!answerMarkdown);
+  if (answerMarkdown) container.innerHTML = answerMarkdown.render(text);
+  else container.textContent = text;
+}
 function title(id, fallback) { return docs.get(String(id))?.title || fallback || String(id); }
 function pdfUrl(id) { return `/api/pdf/${encodeURIComponent(id)}?source=${encodeURIComponent(docs.get(String(id)).source_id)}`; }
 function pageNumber(value, max = Number.MAX_SAFE_INTEGER) { const number = Number(value); return Number.isInteger(number) && number >= 1 && number <= max ? number : null; }
 function viewerControls() { const count = pdf?.numPages || 0; $('pgNum').disabled = !count; $('pgNum').max = count || 1; $('pgNum').value = activePage; $('pageCount').textContent = `/ ${count || '—'}`; $('prevPage').disabled = !count || activePage <= 1; $('nextPage').disabled = !count || activePage >= count; }
-async function showPage(article, requestedPage = 1) {
+function citationLocation(item, id, page) {
+  const doc = docs.get(id);
+  if (!item || !doc || item.source_id !== doc.source_id || String(item.article_id) !== id || item.page !== page) return null;
+  const status = ['matched','approximate'].includes(item.highlight_status) ? item.highlight_status : 'unavailable';
+  const rects = status === 'unavailable' || !Array.isArray(item.rects) ? [] : item.rects.filter(rect => {
+    if (!rect || !['left','top','width','height'].every(key => typeof rect[key] === 'number' && Number.isFinite(rect[key]))) return false;
+    return rect.left >= 0 && rect.left < 1 && rect.top >= 0 && rect.top < 1 && rect.width > 0 && rect.height > 0 && rect.left + rect.width <= 1 + 1e-9 && rect.top + rect.height <= 1 + 1e-9;
+  }).slice(0,100).map(rect => ({left:rect.left,top:rect.top,width:Math.min(rect.width,1-rect.left),height:Math.min(rect.height,1-rect.top)}));
+  return {article_id:id,source_id:item.source_id,page,quote:typeof item.quote === 'string' ? item.quote : '',rects,status,highlight_status:status};
+}
+function drawHighlights(location) {
+  $('pdfHighlights').replaceChildren();
+  $('highlightQuote').hidden = !location?.quote;
+  $('highlightQuote').textContent = location?.quote || '';
+  for (const rect of location?.rects || []) {
+    const node = make('div',`pdf-highlight ${location.status}`);
+    for (const key of ['left','top','width','height']) node.style[key] = `${rect[key] * 100}%`;
+    node.title = location.quote; $('pdfHighlights').append(node);
+  }
+}
+async function showPage(article, requestedPage = 1, citation = null) {
   const id = String(article), doc = docs.get(id);
   if (!doc) { $('viewerStatus').textContent = 'Nie znaleziono tego dokumentu.'; return; }
   const version = ++viewerVersion;
+  selectedCitation = citationLocation(citation, id, pageNumber(requestedPage));
+  const location = selectedCitation;
+  drawHighlights(null);
   if (renderTask) { renderTask.cancel(); renderTask = null; }
   $('viewerStatus').textContent = 'Ładowanie strony…';
   $('pdfCanvas').hidden = true;
@@ -79,8 +130,15 @@ async function showPage(article, requestedPage = 1) {
     await task.promise;
     if (version !== viewerVersion) return;
     const target = $('pdfCanvas'); target.width = canvas.width; target.height = canvas.height; target.style.width = canvas.style.width; target.getContext('2d').drawImage(canvas, 0, 0); target.hidden = false;
+    drawHighlights(location?.page === activePage ? location : null);
     $('viewerStatus').textContent = `${doc.title} · strona ${activePage}`;
+    if (location) $('viewerStatus').textContent += location.rects.length ? (location.status === 'approximate' ? ' · przybliżony obszar (linia przerywana)' : ' · znaleziony fragment') : ' · wskazano stronę; położenie fragmentu niedostępne';
     $('pdfArea').scrollTop = 0;
+    const mark = $('pdfHighlights').firstElementChild;
+    if (mark) {
+      const area = $('pdfArea'), bounds = mark.getBoundingClientRect(), top = bounds.top - area.getBoundingClientRect().top;
+      if (top < 0 || top + bounds.height > area.clientHeight) area.scrollTop = Math.max(0, top - area.clientHeight / 3);
+    }
   } catch (error) {
     if (version === viewerVersion) $('viewerStatus').textContent = 'Nie udało się wyświetlić PDF. Wybierz dokument ponownie.';
   }
@@ -90,7 +148,7 @@ $('pgNum').addEventListener('change', () => showPage(activeArticle, pageNumber($
 $('prevPage').addEventListener('click', () => showPage(activeArticle, activePage - 1));
 $('nextPage').addEventListener('click', () => showPage(activeArticle, activePage + 1));
 let resizeTimer;
-window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (pdf) showPage(activeArticle, activePage); }, 200); });
+window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (pdf) showPage(activeArticle, activePage, selectedCitation); }, 200); });
 async function loadDocs() {
   try {
     const response = await fetch('/api/docs'); if (!response.ok) throw new Error();
@@ -100,7 +158,11 @@ async function loadDocs() {
     if (docs.size) showPage(docs.keys().next().value); else { $('docSel').append(make('option', '', 'Brak dokumentów')); $('viewerStatus').textContent = 'Brak dokumentów w indeksie.'; }
   } catch { $('docSel').replaceChildren(make('option', '', 'Brak połączenia')); $('viewerStatus').textContent = 'Nie udało się pobrać listy dokumentów. Odśwież stronę, aby spróbować ponownie.'; }
 }
-function updateForm() { const busy = !!request; $('q').disabled = busy; $('queryImage').disabled = busy; $('clearImage').disabled = busy; $('send').disabled = busy || uploading; $('cancelAsk').hidden = !busy; }
+function updateForm() { const busy = !!request; $('newChat').disabled = busy; $('q').disabled = busy; $('queryImage').disabled = busy; $('clearImage').disabled = busy; $('send').disabled = busy || uploading; $('cancelAsk').hidden = !busy; }
+$('newChat').addEventListener('click', () => {
+  if (request) return;
+  conversation = []; $('log').replaceChildren(); $('q').value = ''; clearImage(); $('formStatus').textContent = ''; $('q').focus();
+});
 function clearImage() { imageVersion++; queryImage = null; uploading = false; $('queryImage').value = ''; $('attachment').hidden = true; $('attachmentPreview').removeAttribute('src'); $('attachmentName').textContent = ''; updateForm(); }
 $('clearImage').addEventListener('click', clearImage);
 $('queryImage').addEventListener('change', async () => {
@@ -126,7 +188,7 @@ function sourceButton(item, className) {
   button.title = `Otwórz: ${title(id,item.document)}, strona ${page}`;
   button.addEventListener('click', event => {
     if (link && (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)) return;
-    event.preventDefault(); showPage(id, page);
+    event.preventDefault(); showPage(id, page, link ? item : null);
     if (matchMedia('(max-width:800px)').matches) $('viewer').scrollIntoView({behavior:'smooth'});
   });
   return button;
@@ -138,6 +200,25 @@ function showEvidence(container, pages) {
     const img = make('img'); img.src = `/api/page/${encodeURIComponent(item.article_id)}/${item.page}?source=${encodeURIComponent(docs.get(String(item.article_id)).source_id)}`; img.alt = `Podgląd strony ${item.page}`; img.loading = 'lazy'; img.addEventListener('error', () => { img.alt = 'Podgląd niedostępny — otwórz PDF'; });
     button.append(img, make('span','',`${title(item.article_id,item.document)} · s. ${item.page}`)); container.append(button);
   }
+}
+function showClassification(badge, classification) {
+  const themes = {
+    warranty:{label:'Gwarancje',accent:'#477063',ink:'#335447',soft:'#edf5ef',border:'#c6dbce'},
+    claim:{label:'Reklamacje',accent:'#a16b35',ink:'#75491f',soft:'#fbf3e8',border:'#e8d3b9'},
+    service:{label:'Serwis',accent:'#527aa0',ink:'#355777',soft:'#edf3f9',border:'#c9d9e8'},
+    manual:{label:'Instrukcje',accent:'#80709e',ink:'#5e4c7d',soft:'#f3eff8',border:'#d9d0e7'},
+    price:{label:'Ceny',accent:'#94783e',ink:'#6b5529',soft:'#f8f3e8',border:'#e2d6ba'},
+    other:{label:'Inne',accent:'#738078',ink:'#4d5d52',soft:'#f1f4f0',border:'#d5ddd4'},
+  };
+  const theme = Object.hasOwn(themes,classification?.category) ? themes[classification.category] : null;
+  const card = badge.closest('.response');
+  if (theme) card.dataset.topic = classification.category; else delete card.dataset.topic;
+  for (const property of ['accent','ink','soft','border']) {
+    if (theme) card.style.setProperty(`--topic-${property}`,theme[property]);
+    else card.style.removeProperty(`--topic-${property}`);
+  }
+  badge.hidden = !theme; badge.textContent = theme ? `Temat: ${theme.label}` : '';
+  badge.title = 'Temat pytania';
 }
 async function readEvents(response, receive) {
   const reader = response.body.getReader(), decoder = new TextDecoder(); let buffer = '';
@@ -156,34 +237,46 @@ $('q').addEventListener('keydown', event => { if (event.key === 'Enter' && !even
 $('composer').addEventListener('submit', async event => {
   event.preventDefault(); if (request || uploading) return;
   const question = $('q').value.trim(), image = queryImage;
+  const history = conversation.map(message => ({...message}));
+  const selectedSource = docs.get(activeArticle)?.source_id;
   $('formStatus').textContent = '';
   if (!question && !image) { $('formStatus').textContent = 'Wpisz pytanie lub dodaj obraz.'; $('q').focus(); return; }
   $('welcome')?.remove();
   const turn = make('article','turn'), user = make('div','question',question || 'Pytanie na podstawie obrazu');
   if (image) { const preview = make('img'); preview.src = image; preview.alt = 'Obraz do pytania'; user.append(preview); }
-  const responseNode = make('div','response'), status = make('div','status','Wyszukiwanie stron…'), evidence = make('div','evidence-list'), answer = make('div','answer'), citations = make('div','citations');
-  status.setAttribute('role','status'); responseNode.append(status,evidence,answer,citations); turn.append(user,responseNode); $('log').append(turn); turn.scrollIntoView({block:'nearest'});
-  const controller = new AbortController(); request = controller; updateForm(); let completed = false, failed = false;
+  const responseNode = make('div','response'), status = make('div','status','Wyszukiwanie stron…'), evidence = make('div','evidence-list'), answer = make('div','answer answer-body'), citations = make('div','citations');
+  const badge = make('span','topic-badge'); badge.hidden = true;
+  const cardHeader = make('div','response-header'); cardHeader.append(badge,status);
+  const interpretation = make('div','muted answer'); interpretation.hidden = true;
+  function showInterpretation(value) { if (typeof value === 'string' && value.trim() && value !== question) { interpretation.textContent = `Pytanie: ${value}`; interpretation.hidden = false; } }
+  status.setAttribute('role','status'); responseNode.append(cardHeader,interpretation,evidence,answer,citations); turn.append(user,responseNode); $('log').append(turn); turn.scrollIntoView({block:'nearest'});
+  const controller = new AbortController(); request = controller; updateForm(); let completed = false, failed = false, finalPayload = null;
   try {
-    const response = await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question,query_image:image}),signal:controller.signal});
+    const response = await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question,query_image:image,history,...(selectedSource ? {selected_source_id:selectedSource} : {})}),signal:controller.signal});
     if (!response.ok) { let detail = ''; try { const body = await response.json(); if (typeof body.detail === 'string') detail = body.detail; } catch {} throw new Error(detail || `Błąd serwera (${response.status}).`); }
     await readEvents(response, frame => {
       if (controller.signal.aborted) return;
       const payload = frame.payload;
+      if (frame.kind === 'event' && payload?.type === 'resolving_context') status.textContent = 'Uwzględniam rozmowę…';
+      if (frame.kind === 'event' && payload?.type === 'context') showInterpretation(payload.question);
+      if (frame.kind === 'event' && payload?.type === 'classification') showClassification(badge,payload);
       if (frame.kind === 'error') { failed = true; throw new Error(typeof payload === 'string' ? payload : 'Nie udało się uzyskać odpowiedzi.'); }
       if (frame.kind === 'event' && payload?.type === 'retrieved') { showEvidence(evidence,payload.pages); status.textContent = 'Znalezione strony · Gemini przygotowuje odpowiedź…'; }
       if (frame.kind === 'event' && payload?.type === 'reranking') status.textContent = 'Jev wybiera strony pasujące do pytania…';
       if (frame.kind === 'event' && payload?.type === 'reading') status.textContent = 'Gemini czyta znalezione strony…';
       if (frame.kind === 'done') {
-        completed = true; if (!evidence.children.length) showEvidence(evidence,payload.pages);
-        answer.textContent = payload.answer || 'Nie znaleziono odpowiedzi w dokumentach.'; citations.replaceChildren();
-        for (const item of payload.citations || []) { const button = sourceButton(item,'citation'); if (button) { button.textContent = `${title(item.article_id,item.document)} · s. ${item.page}`; citations.append(button); } }
+        if (payload.classification) showClassification(badge,payload.classification);
+        completed = true; finalPayload = payload; showInterpretation(payload.resolved_question);
+        if (payload.needs_clarification) evidence.replaceChildren(); else if (!evidence.children.length) showEvidence(evidence,payload.pages);
+        renderAnswer(answer,payload.answer || 'Nie znaleziono odpowiedzi w dokumentach.'); citations.replaceChildren();
+        for (const item of (payload.needs_clarification ? [] : payload.citations || [])) { const button = sourceButton(item,'citation'); if (button) { button.textContent = `${title(item.article_id,item.document)} · s. ${item.page}`; citations.append(button); } }
         const decision = payload.retrieval?.jev;
         status.textContent = decision?.status === 'applied' ? 'Odpowiedź Gemini · strony wybrane z Jev' : decision?.status === 'fallback' ? 'Odpowiedź Gemini · Jev niedostępny, użyto wyników wyszukiwania' : 'Odpowiedź Gemini';
+        if (payload.needs_clarification) status.textContent = 'Doprecyzuj pytanie';
       }
     });
     if (!completed && !failed) throw new Error('Połączenie zakończyło się przed otrzymaniem odpowiedzi. Spróbuj ponownie.');
-    if (completed) { $('q').value = ''; clearImage(); }
+    if (completed && !controller.signal.aborted && !failed) { rememberTurn(finalPayload.resolved_question || question || 'Pytanie na podstawie obrazu', finalPayload.answer || answer.textContent); $('q').value = ''; clearImage(); }
   } catch (error) { status.classList.add('error'); status.textContent = error.name === 'AbortError' ? 'Anulowano. Możesz wysłać pytanie ponownie.' : error.message || 'Nie udało się uzyskać odpowiedzi.'; }
   finally { if (request === controller) { request = null; updateForm(); $('q').focus(); } }
 });

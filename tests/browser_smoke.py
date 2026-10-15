@@ -52,7 +52,15 @@ def run(url, screenshot):
         page.locator("#send").click()
         expect(page.locator("#send")).to_be_enabled()
         assert requests[-1]["query_image"].startswith("data:image/png;base64,")
-        assert set(requests[-1]) == {"question", "query_image"}
+        assert set(requests[-1]) == {"question", "query_image", "history", "selected_source_id"}
+        assert requests[1]["history"] == [
+            {"role": "user", "text": "First question"},
+            {"role": "assistant", "text": "Evidence on page 2."},
+        ]
+        assert len(requests[-1]["history"]) == 4
+        assert all(set(message) == {"role", "text"} for message in requests[-1]["history"])
+        assert "data:image" not in json.dumps(requests[-1]["history"])
+        assert requests[-1]["selected_source_id"] == doc["source_id"]
         expect(page.locator("#clearImage")).to_be_hidden()
         expect(page.locator("#cancelAsk")).to_be_hidden()
         page.screenshot(path=str(screenshot), full_page=True)

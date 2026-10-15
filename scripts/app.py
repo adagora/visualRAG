@@ -10,6 +10,7 @@ from pathlib import Path
 import queue
 import sys
 import threading
+from typing import Literal
 from urllib.parse import quote
 
 from dotenv import load_dotenv
@@ -20,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field
 import uvicorn
 
 import gemini_index
+import chat_context
 import rag
 import visual_query
 
@@ -39,10 +41,18 @@ def get_index() -> gemini_index.Index:
         raise HTTPException(503, f"Cannot open Gemini index: {exc}") from exc
 
 
+class Message(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: Literal["user", "assistant"]
+    text: str = Field(min_length=1, max_length=chat_context.MAX_MESSAGE_CHARS)
+
+
 class Ask(BaseModel):
     model_config = ConfigDict(extra="forbid")
     question: str = Field(default="", max_length=4000)
     query_image: str | None = Field(default=None, max_length=7_000_000)
+    history: list[Message] = Field(default_factory=list, max_length=chat_context.MAX_MESSAGES)
+    selected_source_id: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -101,6 +111,13 @@ def source_pdf(article_id: int, source: str | None = None,
 
 @app.post("/api/ask")
 def ask(req: Ask, request: Request, index: gemini_index.Index = Depends(get_index)):
+    selected_document = None
+    if req.selected_source_id is not None:
+        selected = next((doc for doc in index.documents if doc["source_id"] == req.selected_source_id), None)
+        if selected is None:
+            raise HTTPException(409, "The document changed. Refresh the app to load its current sources.")
+        selected_document = {"source_id": selected["source_id"], "title": selected["title"]}
+    history = chat_context.bounded_history([message.model_dump() for message in req.history])
     try:
         image = visual_query.decode_image(req.query_image)
     except ValueError as exc:
@@ -126,7 +143,8 @@ def ask(req: Ask, request: Request, index: gemini_index.Index = Depends(get_inde
         try:
             result = rag.answer(index, question, image=image,
                                 on_event=lambda event: post("event", event),
-                                cancelled=cancelled.is_set)
+                                cancelled=cancelled.is_set, history=history,
+                                selected_document=selected_document)
             post("done", result)
         except rag.CancelledError:
             pass
